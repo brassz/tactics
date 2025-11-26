@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus PIX - Sistema Completo de Pagamentos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal {
+            display: none;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+
+        .nexus-logo {
+            filter: brightness(0) invert(1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <img src="https://i.ibb.co/SVGLgXj/nexus-logo.png" alt="Nexus" class="h-12 nexus-logo">
+                    <div>
+                        <h1 class="text-3xl font-bold">NEXUS PIX</h1>
+                        <p class="text-sm opacity-90">Sistema Completo de Pagamentos Instantâneos</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="loadStats()" class="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-sync-alt mr-2"></i>Atualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-fade-in">
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Total de Contas</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2" id="totalAccounts">0</p>
+                    </div>
+                    <div class="bg-blue-100 rounded-full p-4">
+                        <i class="fas fa-users text-blue-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Chaves PIX</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2" id="totalKeys">0</p>
+                    </div>
+                    <div class="bg-green-100 rounded-full p-4">
+                        <i class="fas fa-key text-green-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Transações</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2" id="totalTransactions">0</p>
+                    </div>
+                    <div class="bg-purple-100 rounded-full p-4">
+                        <i class="fas fa-exchange-alt text-purple-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6 card-hover">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-500 text-sm font-medium">Volume Total</p>
+                        <p class="text-3xl font-bold text-gray-800 mt-2" id="totalVolume">R$ 0,00</p>
+                    </div>
+                    <div class="bg-yellow-100 rounded-full p-4">
+                        <i class="fas fa-dollar-sign text-yellow-600 text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="bg-white rounded-xl shadow-lg mb-8">
+            <div class="flex border-b overflow-x-auto">
+                <button onclick="switchTab('accounts')" class="tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 transition" data-tab="accounts">
+                    <i class="fas fa-user-circle mr-2"></i>Contas
+                </button>
+                <button onclick="switchTab('pixkeys')" class="tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 transition" data-tab="pixkeys">
+                    <i class="fas fa-key mr-2"></i>Chaves PIX
+                </button>
+                <button onclick="switchTab('transactions')" class="tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 transition" data-tab="transactions">
+                    <i class="fas fa-exchange-alt mr-2"></i>Transações
+                </button>
+                <button onclick="switchTab('qrcode')" class="tab-btn px-6 py-4 font-semibold text-gray-600 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-600 transition" data-tab="qrcode">
+                    <i class="fas fa-qrcode mr-2"></i>QR Code
+                </button>
+            </div>
+
+            <!-- Tab Contents -->
+            <div class="p-6">
+                <!-- Accounts Tab -->
+                <div id="accounts-tab" class="tab-content active">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Gerenciar Contas</h2>
+                        <button onclick="openCreateAccountModal()" class="gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                            <i class="fas fa-plus mr-2"></i>Nova Conta
+                        </button>
+                    </div>
+                    <div id="accountsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Accounts will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- PIX Keys Tab -->
+                <div id="pixkeys-tab" class="tab-content">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Chaves PIX</h2>
+                        <button onclick="openCreatePixKeyModal()" class="gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                            <i class="fas fa-plus mr-2"></i>Nova Chave PIX
+                        </button>
+                    </div>
+                    <div id="pixKeysList" class="space-y-4">
+                        <!-- PIX keys will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- Transactions Tab -->
+                <div id="transactions-tab" class="tab-content">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold text-gray-800">Transações PIX</h2>
+                        <button onclick="openSendPixModal()" class="gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                            <i class="fas fa-paper-plane mr-2"></i>Enviar PIX
+                        </button>
+                    </div>
+                    <div id="transactionsList" class="space-y-4">
+                        <!-- Transactions will be loaded here -->
+                    </div>
+                </div>
+
+                <!-- QR Code Tab -->
+                <div id="qrcode-tab" class="tab-content">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-4">Gerar QR Code</h2>
+                            <div class="bg-gray-50 rounded-lg p-6">
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 font-semibold mb-2">Tipo de QR Code</label>
+                                    <select id="qrType" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                                        <option value="static">Estático</option>
+                                        <option value="dynamic">Dinâmico</option>
+                                    </select>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 font-semibold mb-2">Conta</label>
+                                    <select id="qrAccountId" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                                        <option value="">Selecione uma conta</option>
+                                    </select>
+                                </div>
+                                <div class="mb-4" id="pixKeyField">
+                                    <label class="block text-gray-700 font-semibold mb-2">Chave PIX</label>
+                                    <input type="text" id="qrPixKey" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="Digite a chave PIX">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 font-semibold mb-2">Valor (R$)</label>
+                                    <input type="number" id="qrAmount" step="0.01" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="0,00">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 font-semibold mb-2">Descrição</label>
+                                    <input type="text" id="qrDescription" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="Descrição do pagamento">
+                                </div>
+                                <button onclick="generateQRCode()" class="w-full gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                                    <i class="fas fa-qrcode mr-2"></i>Gerar QR Code
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-4">QR Code Gerado</h2>
+                            <div id="qrCodeResult" class="bg-gray-50 rounded-lg p-6 text-center">
+                                <div class="text-gray-400">
+                                    <i class="fas fa-qrcode text-6xl mb-4"></i>
+                                    <p>Nenhum QR Code gerado ainda</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Account Modal -->
+    <div id="createAccountModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 animate-fade-in">
+            <div class="gradient-bg text-white p-6 rounded-t-xl">
+                <h3 class="text-2xl font-bold">Nova Conta</h3>
+            </div>
+            <div class="p-6">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">Nome Completo</label>
+                    <input type="text" id="accountName" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="João Silva">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">Tipo de Documento</label>
+                    <select id="accountDocType" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                        <option value="CPF">CPF</option>
+                        <option value="CNPJ">CNPJ</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">Número do Documento</label>
+                    <input type="text" id="accountDocument" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="000.000.000-00">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-semibold mb-2">Saldo Inicial (R$)</label>
+                    <input type="number" id="accountBalance" step="0.01" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="0,00" value="1000">
+                </div>
+                <div class="flex space-x-4">
+                    <button onclick="closeCreateAccountModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-3 rounded-lg font-semibold transition">
+                        Cancelar
+                    </button>
+                    <button onclick="createAccount()" class="flex-1 gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                        Criar Conta
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create PIX Key Modal -->
+    <div id="createPixKeyModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 animate-fade-in">
+            <div class="gradient-bg text-white p-6 rounded-t-xl">
+                <h3 class="text-2xl font-bold">Nova Chave PIX</h3>
+            </div>
+            <div class="p-6">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">Conta</label>
+                    <select id="pixKeyAccountId" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                        <option value="">Selecione uma conta</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">Tipo de Chave</label>
+                    <select id="pixKeyType" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                        <option value="CPF">CPF</option>
+                        <option value="CNPJ">CNPJ</option>
+                        <option value="EMAIL">Email</option>
+                        <option value="PHONE">Telefone</option>
+                        <option value="RANDOM">Aleatória</option>
+                    </select>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-semibold mb-2">Valor da Chave</label>
+                    <input type="text" id="pixKeyValue" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="Digite a chave">
+                </div>
+                <div class="flex space-x-4">
+                    <button onclick="closeCreatePixKeyModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-3 rounded-lg font-semibold transition">
+                        Cancelar
+                    </button>
+                    <button onclick="createPixKey()" class="flex-1 gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                        Criar Chave
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send PIX Modal -->
+    <div id="sendPixModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 animate-fade-in">
+            <div class="gradient-bg text-white p-6 rounded-t-xl">
+                <h3 class="text-2xl font-bold">Enviar PIX</h3>
+            </div>
+            <div class="p-6">
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">Conta de Origem</label>
+                    <select id="sendFromAccount" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition">
+                        <option value="">Selecione uma conta</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">Chave PIX de Destino</label>
+                    <input type="text" id="sendToPixKey" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="Digite a chave PIX">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-semibold mb-2">Valor (R$)</label>
+                    <input type="number" id="sendAmount" step="0.01" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="0,00">
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-semibold mb-2">Descrição</label>
+                    <input type="text" id="sendDescription" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition" placeholder="Descrição do pagamento">
+                </div>
+                <div class="flex space-x-4">
+                    <button onclick="closeSendPixModal()" class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-3 rounded-lg font-semibold transition">
+                        Cancelar
+                    </button>
+                    <button onclick="sendPix()" class="flex-1 gradient-bg text-white px-6 py-3 rounded-lg font-semibold hover:opacity-90 transition">
+                        Enviar PIX
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 bg-white rounded-lg shadow-2xl p-4 transform translate-x-full transition-transform duration-300 z-50 max-w-sm">
+        <div class="flex items-center space-x-3">
+            <div id="toastIcon" class="flex-shrink-0"></div>
+            <div>
+                <p id="toastTitle" class="font-semibold"></p>
+                <p id="toastMessage" class="text-sm text-gray-600"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

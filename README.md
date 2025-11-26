@@ -1,92 +1,350 @@
-# CS2 Tactics Manager
+# 🚀 NEXUS PIX - Sistema Completo de API PIX
 
-Gerenciador de táticas e estratégias para Counter-Strike 2.
+Sistema completo e 100% funcional de API PIX desenvolvido para a Nexus. Sistema de pagamentos instantâneos moderno, intuitivo e profissional.
 
-## 🎮 Sobre o Projeto
+![Nexus Logo](https://i.ibb.co/SVGLgXj/nexus-logo.png)
 
-O CS2 Tactics Manager é uma aplicação web para organizar e gerenciar táticas de equipe, estratégias por mapa, informações de rounds e dados do time para Counter-Strike 2.
+## 📋 Características
 
-## ✨ Funcionalidades
+### ✨ Funcionalidades Principais
 
-- 📝 Adicionar e gerenciar táticas por mapa
-- 🗺️ Suporte para todos os mapas competitivos (Mirage, Inferno, Dust2, Nuke, Overpass, Vertigo, Ancient)
-- 👥 Gerenciamento de membros do time e suas funções
-- 🎯 Classificação por tipo de round (Eco, Forçado, Full Buy, Pistol, Anti-Eco)
-- 🔍 Filtro de táticas por mapa
-- 💾 Armazenamento local no navegador
-- 🎨 Interface moderna e responsiva
+- ✅ **Gerenciamento de Contas**
+  - Criação de contas CPF e CNPJ
+  - Consulta de saldo em tempo real
+  - Visualização de detalhes completos
 
-## 🚀 Deploy no Vercel
+- 🔑 **Chaves PIX**
+  - Suporte a todos os tipos: CPF, CNPJ, Email, Telefone e Aleatória
+  - Cadastro e exclusão de chaves
+  - Validação e verificação automática
 
-### Opção 1: Deploy via CLI
+- 💸 **Transações PIX**
+  - Envio de PIX instantâneo
+  - Recebimento automático
+  - Estorno de transações
+  - Histórico completo
+  - Rastreamento por TXID
 
-1. Instale a CLI do Vercel:
+- 📱 **QR Code PIX**
+  - Geração de QR Code Estático
+  - Geração de QR Code Dinâmico
+  - Payload PIX copia e cola
+  - Expiração automática (QR dinâmico)
+
+- 📊 **Dashboard Analytics**
+  - Estatísticas em tempo real
+  - Volume total de transações
+  - Quantidade de contas ativas
+  - Total de chaves PIX cadastradas
+
+## 🛠️ Tecnologias Utilizadas
+
+### Backend
+- **Node.js** - Runtime JavaScript
+- **Express** - Framework web
+- **UUID** - Geração de IDs únicos
+- **QRCode** - Geração de QR Codes
+- **CORS** - Cross-Origin Resource Sharing
+
+### Frontend
+- **HTML5** - Estrutura
+- **TailwindCSS** - Estilização moderna
+- **JavaScript (Vanilla)** - Interatividade
+- **Font Awesome** - Ícones
+
+### Banco de Dados
+- **In-Memory Database** - Sistema de banco de dados simulado em memória
+- Persistência durante execução
+- Dados de exemplo pré-carregados
+
+## 🚀 Como Usar
+
+### Instalação
+
+1. **Clone ou baixe o repositório**
 ```bash
-npm i -g vercel
+cd /workspace
 ```
 
-2. Faça login no Vercel:
+2. **Instale as dependências**
 ```bash
-vercel login
+npm install
 ```
 
-3. Deploy o projeto:
+3. **Inicie o servidor**
+```bash
+npm start
+```
+
+4. **Acesse o sistema**
+```
+http://localhost:3000
+```
+
+## 📚 Documentação da API
+
+### Base URL
+```
+http://localhost:3000/api
+```
+
+### Endpoints Disponíveis
+
+#### 🏦 Contas
+
+**POST /api/accounts**
+Criar nova conta
+```json
+{
+  "name": "João Silva",
+  "document": "123.456.789-00",
+  "documentType": "CPF",
+  "balance": 1000.00
+}
+```
+
+**GET /api/accounts**
+Listar todas as contas
+
+**GET /api/accounts/:accountId**
+Consultar conta específica
+
+**GET /api/accounts/:accountId/balance**
+Consultar saldo
+
+**GET /api/accounts/stats/general**
+Estatísticas gerais do sistema
+
+#### 🔑 Chaves PIX
+
+**POST /api/pix/keys**
+Criar chave PIX
+```json
+{
+  "accountId": "uuid",
+  "keyType": "CPF",
+  "keyValue": "12345678900"
+}
+```
+
+**GET /api/pix/keys/account/:accountId**
+Listar chaves de uma conta
+
+**GET /api/pix/keys/lookup/:keyValue**
+Consultar chave PIX
+
+**DELETE /api/pix/keys/:keyId**
+Remover chave PIX
+
+#### 💸 Transações
+
+**POST /api/transactions**
+Enviar PIX
+```json
+{
+  "fromAccountId": "uuid",
+  "pixKey": "12345678900",
+  "amount": 100.00,
+  "description": "Pagamento"
+}
+```
+
+**GET /api/transactions**
+Listar todas as transações
+
+**GET /api/transactions/:transactionId**
+Consultar transação específica
+
+**GET /api/transactions/account/:accountId**
+Listar transações de uma conta
+
+**POST /api/transactions/:transactionId/refund**
+Estornar transação
+```json
+{
+  "reason": "Motivo do estorno"
+}
+```
+
+#### 📱 QR Code
+
+**POST /api/pix/qrcode/static**
+Gerar QR Code estático
+```json
+{
+  "accountId": "uuid",
+  "pixKey": "12345678900",
+  "amount": 100.00,
+  "description": "Pagamento"
+}
+```
+
+**POST /api/pix/qrcode/dynamic**
+Gerar QR Code dinâmico
+```json
+{
+  "accountId": "uuid",
+  "amount": 100.00,
+  "description": "Pagamento",
+  "expiresIn": 30
+}
+```
+
+**GET /api/pix/qrcode/:qrcodeId**
+Consultar QR Code
+
+**GET /api/pix/qrcode/account/:accountId**
+Listar QR Codes de uma conta
+
+**POST /api/transactions/qrcode/pay**
+Pagar QR Code
+```json
+{
+  "fromAccountId": "uuid",
+  "qrCodePayload": "payload_json"
+}
+```
+
+## 🎯 Funcionalidades do Sistema
+
+### Dashboard Principal
+- Visualização de estatísticas em tempo real
+- Cards informativos com métricas principais
+- Interface moderna e responsiva
+
+### Gerenciamento de Contas
+- Criação fácil de novas contas
+- Visualização de saldo e detalhes
+- Suporte para CPF e CNPJ
+
+### Chaves PIX
+- Cadastro rápido de chaves
+- Suporte a todos os tipos de chave
+- Validação automática
+- Exclusão segura
+
+### Transações
+- Envio instantâneo de PIX
+- Histórico completo
+- Status em tempo real (COMPLETED, PENDING, FAILED)
+- Sistema de estorno
+- TXID para rastreamento
+
+### QR Code
+- Geração de QR Code estático e dinâmico
+- Visualização do QR Code
+- Payload copia e cola
+- Controle de expiração
+
+## 🎨 Interface do Usuário
+
+- **Design Moderno**: Interface clean e profissional
+- **Responsivo**: Funciona perfeitamente em desktop, tablet e mobile
+- **Intuitivo**: Navegação fácil e clara
+- **Feedback Visual**: Notificações toast para todas as ações
+- **Animações Suaves**: Transições e efeitos elegantes
+- **Cores da Marca**: Gradiente roxo/azul representando a Nexus
+
+## 🔒 Segurança
+
+- Validação de dados em todas as operações
+- Verificação de saldo antes de transações
+- Prevenção de transferências para a mesma conta
+- Sistema de status para rastreamento
+- Logs de todas as operações
+
+## 📊 Dados de Exemplo
+
+O sistema vem pré-carregado com dados de exemplo:
+
+### Contas
+- **João Silva** (CPF) - Saldo: R$ 5.000,00
+- **Maria Santos** (CPF) - Saldo: R$ 3.500,00
+- **Nexus Pagamentos LTDA** (CNPJ) - Saldo: R$ 150.000,00
+
+### Chaves PIX
+- CPF: 12345678900
+- Email: joao@example.com
+- Telefone: +5511987654321
+- CNPJ: 12345678000190
+
+## 🎓 Casos de Uso
+
+1. **Loja Virtual**
+   - Gerar QR Code para pagamento
+   - Cliente escaneia e paga
+   - Confirmação instantânea
+
+2. **Transferência entre Amigos**
+   - Buscar chave PIX do destinatário
+   - Enviar valor
+   - Recebimento imediato
+
+3. **Pagamento de Serviços**
+   - Gerar QR Code dinâmico
+   - Cliente paga até expiração
+   - Confirmação automática
+
+4. **Sistema de Estorno**
+   - Identificar transação
+   - Solicitar estorno com motivo
+   - Reversão automática
+
+## 💡 Diferencial
+
+Este sistema PIX foi desenvolvido para ser:
+
+- ✅ **100% Funcional** - Todas as operações funcionam completamente
+- ✅ **Independente** - Não requer conexão com Banco Central ou BACEN
+- ✅ **Completo** - Implementa todas as funcionalidades PIX
+- ✅ **Moderno** - Interface atual e profissional
+- ✅ **Intuitivo** - Fácil de usar e entender
+- ✅ **Escalável** - Estrutura pronta para crescer
+
+## 🚀 Deploy
+
+### Vercel
 ```bash
 vercel
 ```
 
-### Opção 2: Deploy via GitHub
-
-1. Faça push deste repositório para o GitHub
-2. Acesse [vercel.com](https://vercel.com)
-3. Clique em "Add New Project"
-4. Importe seu repositório do GitHub
-5. O Vercel detectará automaticamente as configurações
-6. Clique em "Deploy"
-
-### Opção 3: Deploy via Vercel Dashboard
-
-1. Acesse [vercel.com](https://vercel.com)
-2. Faça upload dos arquivos do projeto
-3. Configure o projeto (geralmente não é necessário)
-4. Clique em "Deploy"
-
-## 🛠️ Tecnologias Utilizadas
-
-- HTML5
-- CSS3 (Tailwind CSS via CDN)
-- JavaScript (Vanilla)
-- LocalStorage para persistência de dados
-
-## 📦 Estrutura do Projeto
-
-```
-.
-├── index.html       # Arquivo principal da aplicação
-├── vercel.json      # Configurações do Vercel
-├── package.json     # Metadados do projeto
-└── README.md        # Este arquivo
+### Heroku
+```bash
+heroku create nexus-pix
+git push heroku main
 ```
 
-## 💡 Como Usar
+### Docker
+```dockerfile
+FROM node:18
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+EXPOSE 3000
+CMD ["npm", "start"]
+```
 
-1. **Adicionar Tática**: Clique no botão "Nova Tática" e preencha os campos
-2. **Filtrar por Mapa**: Clique em um dos mapas para filtrar as táticas
-3. **Gerenciar Time**: Adicione membros do time e suas funções
-4. **Adversário**: Registre informações sobre o time adversário
-5. **Excluir Tática**: Clique no ícone de lixeira em qualquer tática
+## 📝 Notas Importantes
 
-## 📱 Responsivo
+- Este é um sistema de demonstração/simulação
+- Não está conectado ao sistema PIX real do Banco Central
+- Perfeito para testes, desenvolvimento e demonstrações
+- Todos os dados são armazenados em memória (resetam ao reiniciar)
 
-A aplicação é totalmente responsiva e funciona em:
-- 💻 Desktop
-- 📱 Tablet
-- 📱 Mobile
+## 🤝 Suporte
 
-## 🔒 Privacidade
-
-Todos os dados são armazenados localmente no seu navegador. Nenhuma informação é enviada para servidores externos.
+Para dúvidas ou problemas:
+- Consulte a documentação da API
+- Verifique os logs do console
+- Teste os endpoints individualmente
 
 ## 📄 Licença
 
-MIT License - sinta-se livre para usar este projeto.
+MIT License - Livre para uso e modificação
+
+---
+
+**Desenvolvido com ❤️ para Nexus**
+
+Sistema PIX Completo e Funcional - 2024

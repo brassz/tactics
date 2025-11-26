@@ -1,18 +1,26 @@
 {
-  "name": "cs2-tactics-manager",
+  "name": "nexus-pix-api",
   "version": "1.0.0",
-  "description": "Gerenciador de táticas para Counter-Strike 2",
-  "main": "index.html",
+  "description": "Sistema completo de API PIX para Nexus - 100% funcional",
+  "main": "server.js",
+  "type": "module",
   "scripts": {
-    "start": "npx serve .",
-    "dev": "npx serve ."
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
   "keywords": [
-    "cs2",
-    "counter-strike",
-    "tactics",
-    "gaming"
+    "pix",
+    "api",
+    "pagamentos",
+    "qrcode",
+    "nexus"
   ],
-  "author": "",
-  "license": "MIT"
+  "author": "Nexus",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "uuid": "^9.0.1",
+    "qrcode": "^1.5.3"
+  }
 }
