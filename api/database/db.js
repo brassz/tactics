@@ -1,6 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-// Banco de dados simulado em memória
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const DATA_FILE = join(__dirname, 'data.json');
+
+// Banco de dados com persistência em arquivo JSON
 class Database {
   constructor() {
     this.accounts = new Map();
@@ -8,15 +15,69 @@ class Database {
     this.transactions = new Map();
     this.qrcodes = new Map();
     
-    // Criar algumas contas de exemplo
-    this.initializeSampleData();
+    // Carregar dados salvos ou criar dados de exemplo
+    this.loadData();
+  }
+
+  // Carregar dados do arquivo JSON
+  loadData() {
+    try {
+      if (fs.existsSync(DATA_FILE)) {
+        const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+        
+        // Restaurar accounts
+        if (data.accounts) {
+          data.accounts.forEach(acc => this.accounts.set(acc.id, acc));
+        }
+        
+        // Restaurar pixKeys
+        if (data.pixKeys) {
+          data.pixKeys.forEach(key => this.pixKeys.set(key.id, key));
+        }
+        
+        // Restaurar transactions
+        if (data.transactions) {
+          data.transactions.forEach(tx => this.transactions.set(tx.id, tx));
+        }
+        
+        // Restaurar qrcodes
+        if (data.qrcodes) {
+          data.qrcodes.forEach(qr => this.qrcodes.set(qr.id, qr));
+        }
+        
+        console.log('✅ Dados carregados do arquivo!');
+      } else {
+        console.log('📝 Criando dados de exemplo...');
+        this.initializeSampleData();
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      this.initializeSampleData();
+    }
+  }
+
+  // Salvar dados no arquivo JSON
+  saveData() {
+    try {
+      const data = {
+        accounts: Array.from(this.accounts.values()),
+        pixKeys: Array.from(this.pixKeys.values()),
+        transactions: Array.from(this.transactions.values()),
+        qrcodes: Array.from(this.qrcodes.values())
+      };
+      
+      fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+      console.log('💾 Dados salvos!');
+    } catch (error) {
+      console.error('Erro ao salvar dados:', error);
+    }
   }
 
   initializeSampleData() {
     // Conta de exemplo 1
     const account1 = {
       id: uuidv4(),
-      name: 'João Silva',
+      name: 'João Silva (Exemplo)',
       document: '123.456.789-00',
       documentType: 'CPF',
       balance: 5000.00,
@@ -26,32 +87,23 @@ class Database {
     // Conta de exemplo 2
     const account2 = {
       id: uuidv4(),
-      name: 'Maria Santos',
+      name: 'Maria Santos (Exemplo)',
       document: '987.654.321-00',
       documentType: 'CPF',
       balance: 3500.00,
       createdAt: new Date().toISOString()
     };
 
-    // Conta empresa
-    const account3 = {
-      id: uuidv4(),
-      name: 'Nexus Pagamentos LTDA',
-      document: '12.345.678/0001-90',
-      documentType: 'CNPJ',
-      balance: 150000.00,
-      createdAt: new Date().toISOString()
-    };
-
     this.accounts.set(account1.id, account1);
     this.accounts.set(account2.id, account2);
-    this.accounts.set(account3.id, account3);
 
     // Criar chaves PIX de exemplo
-    this.createPixKey(account1.id, 'CPF', '12345678900');
-    this.createPixKey(account1.id, 'EMAIL', 'joao@example.com');
-    this.createPixKey(account2.id, 'PHONE', '+5511987654321');
-    this.createPixKey(account3.id, 'CNPJ', '12345678000190');
+    this.createPixKey(account1.id, 'CPF', '12345678900', false);
+    this.createPixKey(account1.id, 'EMAIL', 'joao@example.com', false);
+    this.createPixKey(account2.id, 'PHONE', '+5511987654321', false);
+    
+    // Salvar dados iniciais
+    this.saveData();
   }
 
   // ===== ACCOUNTS =====
@@ -63,6 +115,7 @@ class Database {
       createdAt: new Date().toISOString()
     };
     this.accounts.set(account.id, account);
+    this.saveData();
     return account;
   }
 
@@ -78,17 +131,18 @@ class Database {
     const account = this.accounts.get(accountId);
     if (!account) return null;
     account.balance += amount;
+    this.saveData();
     return account;
   }
 
   // ===== PIX KEYS =====
-  createPixKey(accountId, keyType, keyValue) {
+  createPixKey(accountId, keyType, keyValue, shouldSave = true) {
     const account = this.accounts.get(accountId);
     if (!account) throw new Error('Conta não encontrada');
 
     // Verificar se a chave já existe
     const existingKey = Array.from(this.pixKeys.values()).find(
-      key => key.keyValue === keyValue && key.keyType === keyType
+      key => key.keyValue === keyValue && key.keyType === keyType && key.status === 'ACTIVE'
     );
     if (existingKey) throw new Error('Chave PIX já cadastrada');
 
@@ -102,6 +156,7 @@ class Database {
     };
 
     this.pixKeys.set(pixKey.id, pixKey);
+    if (shouldSave) this.saveData();
     return pixKey;
   }
 
@@ -121,6 +176,7 @@ class Database {
     const key = this.pixKeys.get(keyId);
     if (!key) return null;
     key.status = 'DELETED';
+    this.saveData();
     return key;
   }
 
@@ -135,6 +191,7 @@ class Database {
     };
 
     this.transactions.set(transaction.id, transaction);
+    this.saveData();
     return transaction;
   }
 
@@ -148,12 +205,14 @@ class Database {
     if (!fromAccount || !toAccount) {
       transaction.status = 'FAILED';
       transaction.failReason = 'Conta não encontrada';
+      this.saveData();
       return transaction;
     }
 
     if (fromAccount.balance < transaction.amount) {
       transaction.status = 'FAILED';
       transaction.failReason = 'Saldo insuficiente';
+      this.saveData();
       return transaction;
     }
 
@@ -164,6 +223,7 @@ class Database {
     transaction.status = 'COMPLETED';
     transaction.completedAt = new Date().toISOString();
 
+    this.saveData();
     return transaction;
   }
 
@@ -192,6 +252,7 @@ class Database {
     };
 
     this.qrcodes.set(qrcode.id, qrcode);
+    this.saveData();
     return qrcode;
   }
 
