@@ -78,6 +78,10 @@ export default function App() {
 
   useEffect(() => {
     checkUser();
+    
+    // Poll for user changes to handle logout
+    const interval = setInterval(checkUser, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const checkUser = async () => {
@@ -85,6 +89,8 @@ export default function App() {
       const userData = await AsyncStorage.getItem('user');
       if (userData) {
         setUser(JSON.parse(userData));
+      } else {
+        setUser(null);
       }
     } catch (error) {
       console.error('Error loading user:', error);
