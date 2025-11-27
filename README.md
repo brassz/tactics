@@ -1,92 +1,335 @@
-# CS2 Tactics Manager
+# 💰 Sistema Financeiro Completo
 
-Gerenciador de táticas e estratégias para Counter-Strike 2.
+Sistema completo de cadastro, verificação e solicitação financeira com app mobile e painel administrativo.
 
-## 🎮 Sobre o Projeto
+![Status](https://img.shields.io/badge/status-ready-brightgreen)
+![React Native](https://img.shields.io/badge/React%20Native-0.73-blue)
+![Next.js](https://img.shields.io/badge/Next.js-14-black)
+![Supabase](https://img.shields.io/badge/Supabase-2.39-green)
 
-O CS2 Tactics Manager é uma aplicação web para organizar e gerenciar táticas de equipe, estratégias por mapa, informações de rounds e dados do time para Counter-Strike 2.
+## 🎯 Visão Geral
 
-## ✨ Funcionalidades
+Sistema financeiro moderno que permite:
+- Cadastro e aprovação de clientes via mobile
+- Upload e verificação de documentos
+- Solicitações de valores com aprovação
+- Controle de pagamentos e parcelas
+- Chat ao vivo entre cliente e suporte
 
-- 📝 Adicionar e gerenciar táticas por mapa
-- 🗺️ Suporte para todos os mapas competitivos (Mirage, Inferno, Dust2, Nuke, Overpass, Vertigo, Ancient)
-- 👥 Gerenciamento de membros do time e suas funções
-- 🎯 Classificação por tipo de round (Eco, Forçado, Full Buy, Pistol, Anti-Eco)
-- 🔍 Filtro de táticas por mapa
-- 💾 Armazenamento local no navegador
-- 🎨 Interface moderna e responsiva
+## 📁 Estrutura do Projeto
 
-## 🚀 Deploy no Vercel
+```
+/workspace
+├── mobile/              # App React Native (Expo)
+│   ├── screens/        # Telas do app
+│   ├── lib/            # Supabase client
+│   └── App.js          # Entry point
+├── admin-panel/        # Painel Admin Next.js
+│   ├── app/            # App Router do Next.js
+│   │   ├── dashboard/  # Páginas do dashboard
+│   │   └── page.tsx    # Login
+│   └── lib/            # Supabase client
+├── supabase/           # Schema e configurações
+│   ├── schema.sql      # Database schema
+│   └── README.md       # Instruções Supabase
+├── SETUP.md           # Guia completo de instalação
+└── README.md          # Este arquivo
+```
 
-### Opção 1: Deploy via CLI
+## 🚀 Quick Start
 
-1. Instale a CLI do Vercel:
+### 1. Configurar Supabase
 ```bash
-npm i -g vercel
+# Execute o SQL no Supabase SQL Editor
+cat supabase/schema.sql
+# Crie os buckets: user-documents, chat-files
 ```
 
-2. Faça login no Vercel:
+### 2. Instalar Mobile App
 ```bash
-vercel login
+cd mobile
+npm install
+npm start
 ```
 
-3. Deploy o projeto:
+### 3. Instalar Admin Panel
 ```bash
-vercel
+cd admin-panel
+npm install
+npm run dev
 ```
 
-### Opção 2: Deploy via GitHub
+**📖 Veja o [SETUP.md](SETUP.md) para guia detalhado!**
 
-1. Faça push deste repositório para o GitHub
-2. Acesse [vercel.com](https://vercel.com)
-3. Clique em "Add New Project"
-4. Importe seu repositório do GitHub
-5. O Vercel detectará automaticamente as configurações
-6. Clique em "Deploy"
+## 📱 App Mobile - Funcionalidades
 
-### Opção 3: Deploy via Vercel Dashboard
+### 🔐 Autenticação
+- ✅ Cadastro com CPF e Nome
+- ✅ Login simples por CPF
+- ✅ Verificação de status de aprovação
 
-1. Acesse [vercel.com](https://vercel.com)
-2. Faça upload dos arquivos do projeto
-3. Configure o projeto (geralmente não é necessário)
-4. Clique em "Deploy"
+### 📄 Documentos
+- ✅ Selfie com câmera
+- ✅ Upload de RG/CNH
+- ✅ Upload de comprovante de endereço
+- ✅ Upload de comprovante de renda
+- ✅ Upload de carteira de trabalho digital (PDF)
 
-## 🛠️ Tecnologias Utilizadas
+### 💰 Solicitações
+- ✅ Solicitar valores com justificativa
+- ✅ Histórico de solicitações
+- ✅ Acompanhamento de status
 
-- HTML5
-- CSS3 (Tailwind CSS via CDN)
-- JavaScript (Vanilla)
-- LocalStorage para persistência de dados
+### 💳 Pagamentos
+- ✅ Visualizar parcelas futuras
+- ✅ Status de pagamentos
+- ✅ Datas de vencimento
+- ✅ Total pendente e pago
 
-## 📦 Estrutura do Projeto
+### 💬 Suporte
+- ✅ Chat ao vivo com admin
+- ✅ Mensagens em tempo real
+- ✅ Histórico organizado
 
+## 🖥️ Painel Admin - Funcionalidades
+
+### 👥 Gerenciamento de Cadastros
+- ✅ Listar todos os cadastros
+- ✅ Aprovar/reprovar clientes
+- ✅ Estatísticas em tempo real
+- ✅ Filtros e busca
+
+### 📂 Documentos
+- ✅ Visualizar documentos enviados
+- ✅ Preview de imagens
+- ✅ Download de PDFs
+- ✅ Aprovar/reprovar documentos
+- ✅ Status de análise
+
+### 💵 Solicitações
+- ✅ Gerenciar solicitações de valores
+- ✅ Visualizar justificativas
+- ✅ Aprovar/negar solicitações
+- ✅ Filtros por status
+- ✅ Estatísticas financeiras
+
+### 💰 Pagamentos
+- ✅ Criar novos pagamentos
+- ✅ Marcar como pago
+- ✅ Controle de vencimentos
+- ✅ Histórico completo
+- ✅ Relatórios
+
+### 💬 Chat
+- ✅ Chat em tempo real
+- ✅ Lista de clientes
+- ✅ Histórico de conversas
+- ✅ Interface moderna
+
+## 🎨 Design System
+
+### Cores Principais
+- **Primária**: #3B82F6 (Azul)
+- **Sucesso**: #10B981 (Verde)
+- **Alerta**: #F59E0B (Amarelo)
+- **Erro**: #EF4444 (Vermelho)
+- **Fundo**: #F9FAFB (Cinza claro)
+
+### Estilo
+- Bordas arredondadas (12-20px)
+- Sombras suaves
+- Tipografia moderna
+- Layout responsivo
+- Ícones Lucide
+
+## 🛠️ Tecnologias
+
+### Mobile
+- **React Native** - Framework mobile
+- **Expo** - Desenvolvimento e build
+- **React Navigation** - Navegação
+- **Supabase JS** - Backend e real-time
+- **Expo Camera** - Captura de fotos
+- **Expo Document Picker** - Upload de arquivos
+- **Lucide React Native** - Ícones
+
+### Admin
+- **Next.js 14** - Framework React
+- **TypeScript** - Tipagem
+- **TailwindCSS** - Estilização
+- **Supabase JS** - Backend e real-time
+- **Lucide React** - Ícones
+
+### Backend
+- **Supabase** - Backend as a Service
+- **PostgreSQL** - Banco de dados
+- **Supabase Storage** - Armazenamento de arquivos
+- **Supabase Realtime** - WebSockets para chat
+
+## 📊 Database Schema
+
+```sql
+users                    # Clientes
+├── id (UUID)
+├── cpf (VARCHAR)
+├── nome (VARCHAR)
+├── status (VARCHAR)      # pendente, aprovado, reprovado
+└── data_cadastro (TIMESTAMP)
+
+documents                # Documentos dos clientes
+├── id (UUID)
+├── id_user (UUID FK)
+├── selfie_url (TEXT)
+├── cnh_rg_url (TEXT)
+├── comprovante_endereco_url (TEXT)
+├── comprovante_renda_url (TEXT)
+├── carteira_trabalho_pdf_url (TEXT)
+└── status_documentos (VARCHAR)
+
+solicitacoes_valores     # Solicitações de empréstimo
+├── id (UUID)
+├── id_user (UUID FK)
+├── valor (DECIMAL)
+├── justificativa (TEXT)
+└── status (VARCHAR)      # aguardando, aprovado, negado
+
+pagamentos               # Parcelas de pagamento
+├── id (UUID)
+├── id_user (UUID FK)
+├── valor (DECIMAL)
+├── data_vencimento (DATE)
+├── data_pagamento (TIMESTAMP)
+└── status (VARCHAR)      # pendente, pago, atrasado
+
+chat                     # Mensagens do chat
+├── id (UUID)
+├── id_user (UUID FK)
+├── mensagem (TEXT)
+├── remetente (VARCHAR)   # cliente, admin
+├── timestamp (TIMESTAMP)
+└── lida (BOOLEAN)
+
+admins                   # Administradores
+├── id (UUID)
+├── cpf (VARCHAR)
+└── nome (VARCHAR)
 ```
-.
-├── index.html       # Arquivo principal da aplicação
-├── vercel.json      # Configurações do Vercel
-├── package.json     # Metadados do projeto
-└── README.md        # Este arquivo
+
+## 🔐 Segurança
+
+- ✅ Row Level Security (RLS) habilitado
+- ✅ Políticas de acesso configuradas
+- ✅ Validação de CPF
+- ✅ Upload seguro de arquivos
+- ✅ Storage com permissões adequadas
+
+## 🧪 Testes
+
+### Credenciais de Teste
+
+**Admin Padrão:**
+- CPF: `00000000000`
+
+**Cliente Teste:**
+1. Crie um cadastro no app mobile
+2. Aprove no painel admin
+3. Faça login novamente
+
+## 📈 Fluxo Completo
+
+```mermaid
+graph LR
+A[Cliente se cadastra] --> B[Admin aprova cadastro]
+B --> C[Cliente faz login]
+C --> D[Cliente envia documentos]
+D --> E[Admin aprova documentos]
+E --> F[Cliente solicita valor]
+F --> G[Admin aprova solicitação]
+G --> H[Admin cria pagamentos]
+H --> I[Cliente visualiza parcelas]
 ```
 
-## 💡 Como Usar
+## 🔄 Real-time Features
 
-1. **Adicionar Tática**: Clique no botão "Nova Tática" e preencha os campos
-2. **Filtrar por Mapa**: Clique em um dos mapas para filtrar as táticas
-3. **Gerenciar Time**: Adicione membros do time e suas funções
-4. **Adversário**: Registre informações sobre o time adversário
-5. **Excluir Tática**: Clique no ícone de lixeira em qualquer tática
+- ✅ Chat ao vivo (Supabase Realtime)
+- ✅ Notificações de novos cadastros
+- ✅ Atualização automática de status
+- ✅ Sincronização em tempo real
 
-## 📱 Responsivo
+## 📱 Screenshots
 
-A aplicação é totalmente responsiva e funciona em:
-- 💻 Desktop
-- 📱 Tablet
-- 📱 Mobile
+### Mobile App
+- Tela de boas-vindas moderna
+- Interface de cadastro limpa
+- Upload de documentos intuitivo
+- Dashboard com estatísticas
+- Chat em tempo real
 
-## 🔒 Privacidade
+### Admin Panel
+- Dashboard com métricas
+- Tabelas organizadas
+- Modais interativos
+- Preview de documentos
+- Interface responsiva
 
-Todos os dados são armazenados localmente no seu navegador. Nenhuma informação é enviada para servidores externos.
+## 🚢 Deploy
 
-## 📄 Licença
+### Mobile
+```bash
+cd mobile
+eas build --platform android
+eas build --platform ios
+```
 
-MIT License - sinta-se livre para usar este projeto.
+### Admin Panel
+```bash
+cd admin-panel
+npm run build
+# Deploy no Vercel/Netlify
+```
+
+## 📝 Licença
+
+Este projeto foi criado para fins educacionais e demonstração.
+
+## 🤝 Contribuição
+
+Sinta-se à vontade para:
+- Reportar bugs
+- Sugerir melhorias
+- Fazer fork do projeto
+- Enviar pull requests
+
+## 📞 Suporte
+
+Para questões e suporte:
+- Consulte o [SETUP.md](SETUP.md)
+- Verifique a documentação do Supabase
+- Revise os logs de erro
+
+## ✨ Features Futuras
+
+- [ ] Biometria no mobile
+- [ ] Notificações push
+- [ ] Assinatura digital de contratos
+- [ ] Integração com PIX
+- [ ] Dashboard com gráficos
+- [ ] Exportação de relatórios
+- [ ] Multi-idioma
+- [ ] Dark mode
+
+## 🎉 Conclusão
+
+Sistema completo e funcional pronto para uso!
+
+**Importante:** Este é um sistema de demonstração. Para produção, adicione:
+- Autenticação mais robusta
+- Validação de CPF real
+- Criptografia adicional
+- Backup automático
+- Monitoring e logs
+- Testes automatizados
+
+---
+
+**Desenvolvido com ❤️ usando React Native, Next.js e Supabase**
