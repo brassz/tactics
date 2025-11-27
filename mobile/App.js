@@ -4,9 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { StatusBar } from 'expo-status-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Home, FileText, DollarSign, MessageCircle } from 'lucide-react-native';
+import { Home, FileText, DollarSign, MessageCircle, Users, Clock } from 'lucide-react-native';
 
-// Screens
+// User Screens
 import WelcomeScreen from './screens/WelcomeScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import LoginScreen from './screens/LoginScreen';
@@ -15,6 +15,13 @@ import HomeScreen from './screens/HomeScreen';
 import RequestScreen from './screens/RequestScreen';
 import PaymentsScreen from './screens/PaymentsScreen';
 import ChatScreen from './screens/ChatScreen';
+
+// Admin Screens
+import AdminDashboardScreen from './screens/AdminDashboardScreen';
+import AdminUsersScreen from './screens/AdminUsersScreen';
+import AdminRequestsScreen from './screens/AdminRequestsScreen';
+import AdminDocumentsScreen from './screens/AdminDocumentsScreen';
+import AdminPaymentsScreen from './screens/AdminPaymentsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -72,14 +79,27 @@ function MainTabs() {
   );
 }
 
+function AdminStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+      <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+      <Stack.Screen name="AdminRequests" component={AdminRequestsScreen} />
+      <Stack.Screen name="AdminDocuments" component={AdminDocumentsScreen} />
+      <Stack.Screen name="AdminPayments" component={AdminPaymentsScreen} />
+    </Stack.Navigator>
+  );
+}
+
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState(null);
+  const [admin, setAdmin] = useState(null);
 
   useEffect(() => {
     checkUser();
     
-    // Poll for user changes to handle logout
+    // Poll for user/admin changes to handle logout
     const interval = setInterval(checkUser, 1000);
     return () => clearInterval(interval);
   }, []);
@@ -87,10 +107,17 @@ export default function App() {
   const checkUser = async () => {
     try {
       const userData = await AsyncStorage.getItem('user');
-      if (userData) {
+      const adminData = await AsyncStorage.getItem('admin');
+      
+      if (adminData) {
+        setAdmin(JSON.parse(adminData));
+        setUser(null);
+      } else if (userData) {
         setUser(JSON.parse(userData));
+        setAdmin(null);
       } else {
         setUser(null);
+        setAdmin(null);
       }
     } catch (error) {
       console.error('Error loading user:', error);
@@ -108,13 +135,15 @@ export default function App() {
       <StatusBar style="dark" />
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
-          {!user ? (
+          {!user && !admin ? (
             <>
               <Stack.Screen name="Welcome" component={WelcomeScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
               <Stack.Screen name="Login" component={LoginScreen} />
               <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen} />
             </>
+          ) : admin ? (
+            <Stack.Screen name="AdminStack" component={AdminStack} />
           ) : (
             <Stack.Screen name="MainTabs" component={MainTabs} />
           )}

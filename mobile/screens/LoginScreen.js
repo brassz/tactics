@@ -44,13 +44,10 @@ export default function LoginScreen({ navigation }) {
         .single();
 
       if (admin && !adminError) {
-        // É um administrador - não permitir login no app mobile
-        Alert.alert(
-          'Acesso de Administrador',
-          'Este CPF é de um administrador. Por favor, acesse o painel web de administração em seu navegador.',
-          [{ text: 'OK' }]
-        );
+        // É um administrador - fazer login como admin
+        await AsyncStorage.setItem('admin', JSON.stringify(admin));
         setLoading(false);
+        // O app vai recarregar automaticamente através do polling do AsyncStorage
         return;
       }
 
