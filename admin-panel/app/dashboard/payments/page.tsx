@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { CheckCircle, Plus, Edit } from 'lucide-react';
+import { CheckCircle, Plus, Edit, Send, MessageCircle } from 'lucide-react';
 
 interface Payment {
   id: string;
@@ -14,6 +14,7 @@ interface Payment {
   users: {
     nome: string;
     cpf: string;
+    telefone: string | null;
   };
 }
 
@@ -39,7 +40,7 @@ export default function PaymentsPage() {
     const [paymentsRes, usersRes] = await Promise.all([
       supabase
         .from('pagamentos')
-        .select('*, users(nome, cpf)')
+        .select('*, users(nome, cpf, telefone)')
         .order('data_vencimento', { ascending: true }),
       supabase
         .from('users')
@@ -51,6 +52,28 @@ export default function PaymentsPage() {
     setPayments(paymentsRes.data || []);
     setUsers(usersRes.data || []);
     setLoading(false);
+  };
+
+  const sendPaymentWhatsApp = (payment: Payment) => {
+    if (!payment.users.telefone) {
+      alert('Cliente não possui número de telefone cadastrado');
+      return;
+    }
+
+    const phone = payment.users.telefone.replace(/\D/g, '');
+    const valorFormatado = parseFloat(payment.valor.toString()).toFixed(2).replace('.', ',');
+    const dataVencimento = new Date(payment.data_vencimento).toLocaleDateString('pt-BR');
+    
+    let message = `Olá ${payment.users.nome}! 👋\n\n`;
+    message += `Este é um lembrete de pagamento pendente:\n\n`;
+    message += `💰 *Valor:* R$ ${valorFormatado}\n`;
+    message += `📅 *Vencimento:* ${dataVencimento}\n\n`;
+    message += `Por favor, realize o pagamento até a data de vencimento.\n`;
+    message += `\nEm caso de dúvidas, entre em contato conosco! 📱`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/55${phone}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -222,22 +245,33 @@ export default function PaymentsPage() {
                     {getStatusBadge(payment.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {payment.status === 'pendente' && (
-                      <button
-                        onClick={() => markAsPaid(payment.id)}
-                        className="text-green-600 hover:text-green-800 font-medium"
-                      >
-                        Marcar como Pago
-                      </button>
-                    )}
-                    {payment.status === 'pago' && payment.data_pagamento && (
-                      <span className="text-sm text-gray-500">
-                        Pago em{' '}
-                        {new Date(payment.data_pagamento).toLocaleDateString(
-                          'pt-BR'
-                        )}
-                      </span>
-                    )}
+                    <div className="flex gap-2 items-center">
+                      {payment.users.telefone && payment.status === 'pendente' && (
+                        <button
+                          onClick={() => sendPaymentWhatsApp(payment)}
+                          className="text-green-600 hover:text-green-800 p-1"
+                          title="Enviar lembrete via WhatsApp"
+                        >
+                          <MessageCircle size={18} />
+                        </button>
+                      )}
+                      {payment.status === 'pendente' && (
+                        <button
+                          onClick={() => markAsPaid(payment.id)}
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          Marcar como Pago
+                        </button>
+                      )}
+                      {payment.status === 'pago' && payment.data_pagamento && (
+                        <span className="text-sm text-gray-500">
+                          Pago em{' '}
+                          {new Date(payment.data_pagamento).toLocaleDateString(
+                            'pt-BR'
+                          )}
+                        </span>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

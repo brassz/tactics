@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { CheckCircle, XCircle, Clock, Eye } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Eye, MessageCircle, Phone, Edit } from 'lucide-react';
 
 interface User {
   id: string;
   cpf: string;
   nome: string;
+  telefone: string | null;
+  email: string | null;
   status: string;
   data_cadastro: string;
 }
@@ -16,6 +18,8 @@ export default function CadastrosPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({ telefone: '', email: '' });
 
   useEffect(() => {
     loadUsers();
@@ -41,6 +45,40 @@ export default function CadastrosPage() {
       loadUsers();
       setSelectedUser(null);
     }
+  };
+
+  const updateUserContact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    const { error } = await supabase
+      .from('users')
+      .update({
+        telefone: editForm.telefone,
+        email: editForm.email,
+      })
+      .eq('id', editingUser.id);
+
+    if (!error) {
+      loadUsers();
+      setEditingUser(null);
+    }
+  };
+
+  const sendWhatsApp = (user: User) => {
+    if (!user.telefone) {
+      alert('Cliente não possui número de telefone cadastrado');
+      return;
+    }
+
+    const phone = user.telefone.replace(/\D/g, '');
+    let message = `Olá ${user.nome}! 👋\n\n`;
+    message += `Este é o Sistema Financeiro entrando em contato.\n`;
+    message += `\nComo podemos ajudá-lo hoje?`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/55${phone}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
   };
 
   const getStatusBadge = (status: string) => {
@@ -157,6 +195,9 @@ export default function CadastrosPage() {
                   CPF
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Contato
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -177,18 +218,59 @@ export default function CadastrosPage() {
                     {user.cpf}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm">
+                      {user.telefone ? (
+                        <div className="flex items-center gap-1 text-gray-900">
+                          <Phone size={14} />
+                          {user.telefone}
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">Sem telefone</span>
+                      )}
+                      {user.email && (
+                        <div className="text-gray-600 text-xs mt-1">
+                          {user.email}
+                        </div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     {getStatusBadge(user.status)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-gray-600">
                     {new Date(user.data_cadastro).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <button
-                      onClick={() => setSelectedUser(user)}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      Gerenciar
-                    </button>
+                    <div className="flex gap-2">
+                      {user.telefone && (
+                        <button
+                          onClick={() => sendWhatsApp(user)}
+                          className="text-green-600 hover:text-green-800 p-1"
+                          title="Enviar WhatsApp"
+                        >
+                          <MessageCircle size={18} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => {
+                          setEditingUser(user);
+                          setEditForm({
+                            telefone: user.telefone || '',
+                            email: user.email || '',
+                          });
+                        }}
+                        className="text-blue-600 hover:text-blue-800 p-1"
+                        title="Editar contato"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => setSelectedUser(user)}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Gerenciar
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -197,7 +279,7 @@ export default function CadastrosPage() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Status Modal */}
       {selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6">
@@ -248,6 +330,69 @@ export default function CadastrosPage() {
                 Cancelar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Contact Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Editar Contato
+            </h2>
+
+            <form onSubmit={updateUserContact} className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-3">Cliente: <span className="font-medium text-gray-900">{editingUser.nome}</span></p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Telefone (com DDD)
+                </label>
+                <input
+                  type="tel"
+                  value={editForm.telefone}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, telefone: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="11999999999"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, email: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+                >
+                  Salvar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingUser(null)}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -15,9 +15,16 @@ import { supabase } from '../lib/supabase';
 export default function RegisterScreen({ navigation }) {
   const [cpf, setCpf] = useState('');
   const [nome, setNome] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
   const formatCPF = (text) => {
+    const cleaned = text.replace(/\D/g, '');
+    return cleaned.slice(0, 11);
+  };
+
+  const formatTelefone = (text) => {
     const cleaned = text.replace(/\D/g, '');
     return cleaned.slice(0, 11);
   };
@@ -56,6 +63,8 @@ export default function RegisterScreen({ navigation }) {
           {
             cpf,
             nome,
+            telefone: telefone || null,
+            email: email || null,
             status: 'pendente',
           },
         ])
@@ -119,6 +128,31 @@ export default function RegisterScreen({ navigation }) {
             />
           </View>
 
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Telefone (opcional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="11999999999"
+              value={telefone}
+              onChangeText={(text) => setTelefone(formatTelefone(text))}
+              keyboardType="phone-pad"
+              maxLength={11}
+            />
+            <Text style={styles.hint}>DDD + número (ex: 11999999999)</Text>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email (opcional)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="seu@email.com"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleRegister}
@@ -171,6 +205,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
+  },
+  hint: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
   },
   input: {
     borderWidth: 1,
