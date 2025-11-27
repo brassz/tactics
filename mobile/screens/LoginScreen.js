@@ -57,19 +57,9 @@ export default function LoginScreen({ navigation }) {
         
         Alert.alert(
           'Bem-vindo, Administrador!',
-          `Olá ${admin.nome}, você está logado como administrador.`,
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                navigation.reset({
-                  index: 0,
-                  routes: [{ name: 'Welcome' }],
-                });
-              },
-            },
-          ]
+          `Olá ${admin.nome}, você está logado como administrador.`
         );
+        // O app vai recarregar automaticamente através do polling do AsyncStorage
         return;
       }
 
@@ -117,13 +107,8 @@ export default function LoginScreen({ navigation }) {
       // Se não enviou documentos, ir para tela de upload
       if (!documents) {
         navigation.navigate('DocumentUpload', { user });
-      } else {
-        // Recarregar app para entrar no fluxo autenticado
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Welcome' }],
-        });
       }
+      // O app vai recarregar automaticamente através do polling do AsyncStorage
     } catch (error) {
       console.error('Error logging in:', error);
       Alert.alert('Erro', 'Erro ao fazer login. Tente novamente.');

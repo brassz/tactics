@@ -8,6 +8,8 @@ CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   cpf VARCHAR(11) UNIQUE NOT NULL,
   nome VARCHAR(255) NOT NULL,
+  telefone VARCHAR(20),
+  email VARCHAR(255),
   status VARCHAR(20) DEFAULT 'pendente' CHECK (status IN ('pendente', 'aprovado', 'reprovado')),
   data_cadastro TIMESTAMP DEFAULT NOW(),
   created_at TIMESTAMP DEFAULT NOW(),
@@ -71,6 +73,22 @@ CREATE TABLE chat (
   lida BOOLEAN DEFAULT FALSE
 );
 
+-- Tabela de cobranças (charges)
+CREATE TABLE cobrancas (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id_user UUID REFERENCES users(id) ON DELETE CASCADE,
+  valor DECIMAL(10, 2) NOT NULL,
+  descricao TEXT NOT NULL,
+  data_vencimento DATE NOT NULL,
+  status VARCHAR(20) DEFAULT 'pendente' CHECK (status IN ('pendente', 'pago', 'cancelado', 'atrasado')),
+  link_pagamento TEXT,
+  mensagem_whatsapp TEXT,
+  enviado_whatsapp BOOLEAN DEFAULT FALSE,
+  data_envio_whatsapp TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
 -- Criar índices para melhor performance
 CREATE INDEX idx_users_cpf ON users(cpf);
 CREATE INDEX idx_users_status ON users(status);
@@ -81,6 +99,9 @@ CREATE INDEX idx_pagamentos_user ON pagamentos(id_user);
 CREATE INDEX idx_pagamentos_status ON pagamentos(status);
 CREATE INDEX idx_chat_user ON chat(id_user);
 CREATE INDEX idx_chat_timestamp ON chat(timestamp);
+CREATE INDEX idx_cobrancas_user ON cobrancas(id_user);
+CREATE INDEX idx_cobrancas_status ON cobrancas(status);
+CREATE INDEX idx_cobrancas_vencimento ON cobrancas(data_vencimento);
 
 -- Criar Storage Buckets (executar no Dashboard do Supabase)
 -- Bucket: user-documents
@@ -96,6 +117,7 @@ ALTER TABLE solicitacoes_valores ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pagamentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cobrancas ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS básicas (permitir acesso público para simplificar - ajustar conforme necessário)
 CREATE POLICY "Enable read access for all users" ON users FOR SELECT USING (true);
@@ -107,6 +129,7 @@ CREATE POLICY "Enable all access for solicitacoes" ON solicitacoes_valores FOR A
 CREATE POLICY "Enable all access for pagamentos" ON pagamentos FOR ALL USING (true);
 CREATE POLICY "Enable all access for chat" ON chat FOR ALL USING (true);
 CREATE POLICY "Enable read access for admins" ON admins FOR SELECT USING (true);
+CREATE POLICY "Enable all access for cobrancas" ON cobrancas FOR ALL USING (true);
 
 -- Função para atualizar updated_at automaticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -128,4 +151,7 @@ CREATE TRIGGER update_solicitacoes_updated_at BEFORE UPDATE ON solicitacoes_valo
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TRIGGER update_pagamentos_updated_at BEFORE UPDATE ON pagamentos
+FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_cobrancas_updated_at BEFORE UPDATE ON cobrancas
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
