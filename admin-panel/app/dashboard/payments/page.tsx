@@ -1,0 +1,342 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { CheckCircle, Plus, Edit } from 'lucide-react';
+
+interface Payment {
+  id: string;
+  id_user: string;
+  valor: number;
+  data_vencimento: string;
+  data_pagamento: string | null;
+  status: string;
+  users: {
+    nome: string;
+    cpf: string;
+  };
+}
+
+export default function PaymentsPage() {
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    id_user: '',
+    valor: '',
+    data_vencimento: '',
+  });
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    const [paymentsRes, usersRes] = await Promise.all([
+      supabase
+        .from('pagamentos')
+        .select('*, users(nome, cpf)')
+        .order('data_vencimento', { ascending: true }),
+      supabase
+        .from('users')
+        .select('*')
+        .eq('status', 'aprovado')
+        .order('nome', { ascending: true }),
+    ]);
+
+    setPayments(paymentsRes.data || []);
+    setUsers(usersRes.data || []);
+    setLoading(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const { error } = await supabase.from('pagamentos').insert([
+      {
+        id_user: formData.id_user,
+        valor: parseFloat(formData.valor),
+        data_vencimento: formData.data_vencimento,
+        status: 'pendente',
+      },
+    ]);
+
+    if (!error) {
+      setShowModal(false);
+      setFormData({ id_user: '', valor: '', data_vencimento: '' });
+      loadData();
+    }
+  };
+
+  const markAsPaid = async (paymentId: string) => {
+    const { error } = await supabase
+      .from('pagamentos')
+      .update({
+        status: 'pago',
+        data_pagamento: new Date().toISOString(),
+      })
+      .eq('id', paymentId);
+
+    if (!error) {
+      loadData();
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const styles = {
+      pendente: 'bg-yellow-100 text-yellow-800',
+      pago: 'bg-green-100 text-green-800',
+      atrasado: 'bg-red-100 text-red-800',
+      cancelado: 'bg-gray-100 text-gray-800',
+    };
+
+    const labels = {
+      pendente: 'Pendente',
+      pago: 'Pago',
+      atrasado: 'Atrasado',
+      cancelado: 'Cancelado',
+    };
+
+    return (
+      <span
+        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+          styles[status as keyof typeof styles]
+        }`}
+      >
+        {labels[status as keyof typeof labels]}
+      </span>
+    );
+  };
+
+  const stats = {
+    total: payments.reduce((acc, p) => acc + parseFloat(p.valor.toString()), 0),
+    pendente: payments
+      .filter((p) => p.status === 'pendente' || p.status === 'atrasado')
+      .reduce((acc, p) => acc + parseFloat(p.valor.toString()), 0),
+    pago: payments
+      .filter((p) => p.status === 'pago')
+      .reduce((acc, p) => acc + parseFloat(p.valor.toString()), 0),
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Controle de Pagamentos
+          </h1>
+          <p className="text-gray-600">
+            Gerencie os pagamentos dos clientes
+          </p>
+        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors flex items-center gap-2"
+        >
+          <Plus size={20} />
+          Novo Pagamento
+        </button>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <p className="text-gray-600 text-sm">Total Geral</p>
+          <p className="text-3xl font-bold text-gray-900">
+            R$ {stats.total.toFixed(2)}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <p className="text-gray-600 text-sm">Pendente</p>
+          <p className="text-3xl font-bold text-yellow-600">
+            R$ {stats.pendente.toFixed(2)}
+          </p>
+        </div>
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <p className="text-gray-600 text-sm">Recebido</p>
+          <p className="text-3xl font-bold text-green-600">
+            R$ {stats.pago.toFixed(2)}
+          </p>
+        </div>
+      </div>
+
+      {/* Payments List */}
+      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Cliente
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Valor
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Vencimento
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {payments.map((payment) => (
+                <tr key={payment.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="font-medium text-gray-900">
+                        {payment.users.nome}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {payment.users.cpf}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="font-semibold text-gray-900">
+                      R$ {parseFloat(payment.valor.toString()).toFixed(2)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                    {new Date(payment.data_vencimento).toLocaleDateString(
+                      'pt-BR'
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getStatusBadge(payment.status)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {payment.status === 'pendente' && (
+                      <button
+                        onClick={() => markAsPaid(payment.id)}
+                        className="text-green-600 hover:text-green-800 font-medium"
+                      >
+                        Marcar como Pago
+                      </button>
+                    )}
+                    {payment.status === 'pago' && payment.data_pagamento && (
+                      <span className="text-sm text-gray-500">
+                        Pago em{' '}
+                        {new Date(payment.data_pagamento).toLocaleDateString(
+                          'pt-BR'
+                        )}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* New Payment Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Novo Pagamento
+            </h2>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Cliente
+                </label>
+                <select
+                  value={formData.id_user}
+                  onChange={(e) =>
+                    setFormData({ ...formData, id_user: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Selecione um cliente</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.nome} - {user.cpf}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Valor
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.valor}
+                  onChange={(e) =>
+                    setFormData({ ...formData, valor: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Data de Vencimento
+                </label>
+                <input
+                  type="date"
+                  value={formData.data_vencimento}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      data_vencimento: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+                >
+                  Criar Pagamento
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowModal(false);
+                    setFormData({
+                      id_user: '',
+                      valor: '',
+                      data_vencimento: '',
+                    });
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
