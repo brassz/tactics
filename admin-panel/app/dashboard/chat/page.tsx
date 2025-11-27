@@ -17,6 +17,7 @@ interface User {
   id: string;
   nome: string;
   cpf: string;
+  unread_count?: number;
 }
 
 export default function ChatPage() {
@@ -29,33 +30,45 @@ export default function ChatPage() {
 
   useEffect(() => {
     loadUsers();
-  }, []);
+
+    // Subscribe to all new messages from any client
+    const channel = supabase
+      .channel('all-chat-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat',
+          filter: 'remetente=eq.cliente',
+        },
+        (payload) => {
+          // Reload users to update unread counts
+          loadUsers();
+          
+          // If the message is from the currently selected user, add it to messages
+          if (selectedUser && payload.new.id_user === selectedUser.id) {
+            setMessages((prev) => [...prev, payload.new as Message]);
+            scrollToBottom();
+            
+            // Mark as read immediately since admin is viewing
+            supabase
+              .from('chat')
+              .update({ lida: true })
+              .eq('id', payload.new.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedUser]);
 
   useEffect(() => {
     if (selectedUser) {
       loadMessages(selectedUser.id);
-
-      // Subscribe to new messages
-      const channel = supabase
-        .channel(`chat-${selectedUser.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'chat',
-            filter: `id_user=eq.${selectedUser.id}`,
-          },
-          (payload) => {
-            setMessages((prev) => [...prev, payload.new as Message]);
-            scrollToBottom();
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
     }
   }, [selectedUser]);
 
@@ -64,13 +77,34 @@ export default function ChatPage() {
   }, [messages]);
 
   const loadUsers = async () => {
-    const { data } = await supabase
+    // Get all approved users
+    const { data: usersData } = await supabase
       .from('users')
       .select('*')
       .eq('status', 'aprovado')
       .order('nome', { ascending: true });
 
-    setUsers(data || []);
+    if (usersData) {
+      // Get unread message counts for each user
+      const usersWithUnread = await Promise.all(
+        usersData.map(async (user) => {
+          const { count } = await supabase
+            .from('chat')
+            .select('*', { count: 'exact', head: true })
+            .eq('id_user', user.id)
+            .eq('remetente', 'cliente')
+            .eq('lida', false);
+
+          return {
+            ...user,
+            unread_count: count || 0,
+          };
+        })
+      );
+
+      setUsers(usersWithUnread);
+    }
+    
     setLoading(false);
   };
 
@@ -141,12 +175,21 @@ export default function ChatPage() {
                 <button
                   key={user.id}
                   onClick={() => setSelectedUser(user)}
-                  className={`w-full text-left p-4 hover:bg-gray-50 transition-colors ${
+                  className={`w-full text-left p-4 hover:bg-gray-50 transition-colors relative ${
                     selectedUser?.id === user.id ? 'bg-blue-50' : ''
                   }`}
                 >
-                  <div className="font-medium text-gray-900">{user.nome}</div>
-                  <div className="text-sm text-gray-500">{user.cpf}</div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">{user.nome}</div>
+                      <div className="text-sm text-gray-500">{user.cpf}</div>
+                    </div>
+                    {user.unread_count && user.unread_count > 0 && (
+                      <div className="bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                        {user.unread_count}
+                      </div>
+                    )}
+                  </div>
                 </button>
               ))}
             </div>
