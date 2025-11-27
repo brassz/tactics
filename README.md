@@ -67,6 +67,7 @@ npm run dev
 - ✅ Cadastro com CPF e Nome
 - ✅ Login simples por CPF
 - ✅ Verificação de status de aprovação
+- ✅ **Administradores podem fazer login no app mobile**
 
 ### 📄 Documentos
 - ✅ Selfie com câmera
@@ -227,13 +228,17 @@ admins                   # Administradores
 
 ### Credenciais de Teste
 
-**Admin Padrão:**
-- CPF: `00000000000`
+**Admins (funcionam no painel web E no app mobile):**
+- CPF: `05050149045` (Administrador Principal)
+- CPF: `42483289843` (Admin JA)
+- CPF: `00000000000` (Administrador Master)
 
 **Cliente Teste:**
 1. Crie um cadastro no app mobile
 2. Aprove no painel admin
 3. Faça login novamente
+
+**📖 Mais informações: [ADMIN_LOGIN_MOBILE.md](ADMIN_LOGIN_MOBILE.md)**
 
 ## 📈 Fluxo Completo
 
