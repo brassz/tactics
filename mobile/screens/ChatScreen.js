@@ -75,7 +75,7 @@ export default function ChatScreen() {
   };
 
   const handleSend = async () => {
-    if (!mensagem.trim()) return;
+    if (!mensagem.trim() || !user) return;
 
     try {
       const { error } = await supabase.from('chat').insert([
@@ -177,9 +177,9 @@ export default function ChatScreen() {
             maxLength={500}
           />
           <TouchableOpacity
-            style={[styles.sendButton, !mensagem.trim() && styles.sendButtonDisabled]}
+            style={[styles.sendButton, (!mensagem.trim() || !user) && styles.sendButtonDisabled]}
             onPress={handleSend}
-            disabled={!mensagem.trim()}
+            disabled={!mensagem.trim() || !user}
           >
             <Send size={20} color="#FFFFFF" />
           </TouchableOpacity>

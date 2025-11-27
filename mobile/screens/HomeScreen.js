@@ -79,10 +79,7 @@ export default function HomeScreen({ navigation }) {
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('user');
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Welcome' }],
-    });
+    // The App component will detect the change and update navigation automatically
   };
 
   const getStatusColor = (status) => {
