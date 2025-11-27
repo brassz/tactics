@@ -35,7 +35,7 @@ npm run dev
 
 ## 2️⃣ App Mobile (Expo)
 
-### 📱 Para usar como cliente
+### 📱 Para usar como cliente ou admin
 
 **Como iniciar**:
 ```bash
@@ -46,9 +46,16 @@ npx expo start
 
 **No app**:
 1. Clique em **"Já tenho conta"**
-2. Digite: `42483289843`
+2. Digite seu CPF: `42483289843` (ou outro CPF de admin)
 3. Clique em "Entrar"
-4. Envie os documentos solicitados
+4. Se for admin, login é automático! ✨
+
+**Novidade**: 🎉 **Administradores agora podem fazer login no app mobile!**
+
+**CPFs de Admin que funcionam no mobile**:
+- `05050149045` (Bruno)
+- `42483289843` (Admin JA)
+- `00000000000` (Administrador Master)
 
 **O que você pode fazer**:
 - ✅ Solicitar valores
@@ -64,7 +71,9 @@ npx expo start
 | Plataforma | URL/Local | Tipo | CPF |
 |------------|-----------|------|-----|
 | **Painel Admin** | http://localhost:3000 | Admin | 42483289843 |
-| **App Mobile** | Expo | Usuário | 42483289843 |
+| **App Mobile** | Expo | Admin ou Usuário | 42483289843 |
+
+💡 **Dica**: Qualquer CPF cadastrado na tabela `admins` pode fazer login no app mobile!
 
 ---
 
@@ -76,9 +85,14 @@ npx expo start
 3. Use janela anônima
 
 ### App Mobile mostra "CPF não encontrado"?
-Execute:
+
+**Para administradores**: O CPF deve estar na tabela `admins` do Supabase.
+
+**Para usuários**: O CPF deve estar na tabela `users` do Supabase.
+
+Teste se seu CPF funciona:
 ```bash
-node /workspace/criar-usuario-mobile.js
+node /workspace/testar-login-admin-mobile.js
 ```
 
 ---

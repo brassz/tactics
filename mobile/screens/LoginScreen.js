@@ -36,7 +36,44 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
 
     try {
-      // Buscar usuário
+      // Primeiro, verificar se é um administrador
+      const { data: admin, error: adminError } = await supabase
+        .from('admins')
+        .select('*')
+        .eq('cpf', cpf)
+        .single();
+
+      if (admin && !adminError) {
+        // É um administrador - permitir acesso direto
+        const adminUser = {
+          id: admin.id,
+          cpf: admin.cpf,
+          nome: admin.nome,
+          status: 'aprovado',
+          isAdmin: true,
+        };
+
+        await AsyncStorage.setItem('user', JSON.stringify(adminUser));
+        
+        Alert.alert(
+          'Bem-vindo, Administrador!',
+          `Olá ${admin.nome}, você está logado como administrador.`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Welcome' }],
+                });
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      // Se não é admin, buscar na tabela de usuários
       const { data: user, error } = await supabase
         .from('users')
         .select('*')
