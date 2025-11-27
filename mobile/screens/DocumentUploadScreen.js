@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { Camera, Upload, CheckCircle } from 'lucide-react-native';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -71,17 +72,20 @@ export default function DocumentUploadScreen({ route, navigation }) {
   };
 
   const uploadFile = async (file, path) => {
-    const formData = new FormData();
     const fileExt = file.uri.split('.').pop();
     const fileName = `${path}/${user.id}_${Date.now()}.${fileExt}`;
 
-    // Criar blob do arquivo
-    const response = await fetch(file.uri);
-    const blob = await response.blob();
+    // Ler arquivo como base64
+    const base64 = await FileSystem.readAsStringAsync(file.uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    // Converter base64 para ArrayBuffer
+    const arrayBuffer = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 
     const { data, error } = await supabase.storage
       .from('user-documents')
-      .upload(fileName, blob, {
+      .upload(fileName, arrayBuffer, {
         contentType: file.mimeType || 'image/jpeg',
         upsert: false,
       });
