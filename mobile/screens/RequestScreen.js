@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DollarSign, Clock, CheckCircle, XCircle } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { getSupabase } from '../lib/supabaseMulti';
 
 export default function RequestScreen() {
   const [user, setUser] = useState(null);
@@ -20,6 +20,9 @@ export default function RequestScreen() {
   const [justificativa, setJustificativa] = useState('');
   const [loading, setLoading] = useState(false);
   const [solicitacoes, setSolicitacoes] = useState([]);
+  
+  // Obter instância do Supabase
+  const supabase = getSupabase();
 
   useEffect(() => {
     loadData();

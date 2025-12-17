@@ -13,7 +13,7 @@ import {
   Linking,
 } from 'react-native';
 import { ArrowLeft, Plus, CheckCircle, MessageCircle, DollarSign } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { getSupabase } from '../lib/supabaseMulti';
 
 export default function AdminPaymentsScreen({ navigation }) {
   const [payments, setPayments] = useState([]);
@@ -25,6 +25,9 @@ export default function AdminPaymentsScreen({ navigation }) {
     valor: '',
     data_vencimento: '',
   });
+  
+  // Obter instância do Supabase
+  const supabase = getSupabase();
 
   useEffect(() => {
     loadData();

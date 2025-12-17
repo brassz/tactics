@@ -10,15 +10,23 @@ import {
   Modal,
   Alert,
   Linking,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
-import { ArrowLeft, CheckCircle, XCircle, Clock, Phone, Mail, MessageCircle } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { ArrowLeft, CheckCircle, XCircle, Clock, Phone, Mail, MessageCircle, Eye, FileText } from 'lucide-react-native';
+import { getSupabase, getCompanySupabase, supabaseStorage } from '../lib/supabaseMulti';
 
 export default function AdminUsersScreen({ navigation }) {
   const [users, setUsers] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [documents, setDocuments] = useState(null);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [viewingImage, setViewingImage] = useState(null);
+  
+  // Obter instância do Supabase
+  const supabase = getSupabase();
 
   useEffect(() => {
     loadUsers();
@@ -28,10 +36,52 @@ export default function AdminUsersScreen({ navigation }) {
     const { data } = await supabase
       .from('users')
       .select('*')
-      .order('data_cadastro', { ascending: false });
+      .order('created_at', { ascending: false });
 
     setUsers(data || []);
   };
+
+  const loadUserDocuments = async (userId) => {
+    setLoadingDocs(true);
+    try {
+      const documentTypes = ['selfie', 'cnh', 'ctps', 'comprovante'];
+      const docs = {};
+      
+      for (const type of documentTypes) {
+        const path = `${userId}/${type}`;
+        const { data, error } = await supabaseStorage
+          .storage
+          .from('user-documents')
+          .list(userId, {
+            search: type
+          });
+        
+        if (!error && data && data.length > 0) {
+          const { data: { publicUrl } } = supabaseStorage
+            .storage
+            .from('user-documents')
+            .getPublicUrl(`${path}/${data[0].name}`);
+          
+          docs[type] = publicUrl;
+        }
+      }
+      
+      setDocuments(docs);
+    } catch (error) {
+      console.error('Error loading documents:', error);
+      Alert.alert('Erro', 'Erro ao carregar documentos');
+    } finally {
+      setLoadingDocs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedUser) {
+      loadUserDocuments(selectedUser.id);
+    } else {
+      setDocuments(null);
+    }
+  }, [selectedUser]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -40,17 +90,78 @@ export default function AdminUsersScreen({ navigation }) {
   };
 
   const updateUserStatus = async (userId, status) => {
-    const { error } = await supabase
-      .from('users')
-      .update({ status })
-      .eq('id', userId);
+    try {
+      // Se está aprovando, precisa copiar para o banco da empresa
+      if (status === 'aprovado') {
+        // Buscar dados completos do usuário
+        const { data: user, error: fetchError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single();
 
-    if (!error) {
-      await loadUsers();
-      setSelectedUser(null);
-      Alert.alert('Sucesso', `Cadastro ${status === 'aprovado' ? 'aprovado' : 'reprovado'} com sucesso!`);
-    } else {
-      Alert.alert('Erro', 'Erro ao atualizar status');
+        if (fetchError || !user) {
+          Alert.alert('Erro', 'Erro ao buscar dados do usuário');
+          return;
+        }
+
+        if (!user.company) {
+          Alert.alert('Erro', 'Usuário não possui empresa definida');
+          return;
+        }
+
+        // Obter instância do banco da empresa
+        const companySupabase = getCompanySupabase(user.company);
+        
+        if (!companySupabase) {
+          Alert.alert('Erro', 'Erro ao conectar com banco da empresa');
+          return;
+        }
+
+        // Copiar dados para tabela clients do banco da empresa
+        const { error: insertError } = await companySupabase
+          .from('clients')
+          .insert([{
+            cpf: user.cpf,
+            name: user.nome,
+            phone: user.phone,
+            email: user.email,
+            address: user.address,
+            rg: user.rg,
+            birth_date: user.birth_date,
+            photo: user.photo,
+            created_at: user.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }]);
+
+        if (insertError) {
+          console.error('Error inserting into company database:', insertError);
+          Alert.alert('Erro', 'Erro ao salvar cliente no banco da empresa');
+          return;
+        }
+      }
+
+      // Atualizar status na tabela users do banco único
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ status })
+        .eq('id', userId);
+
+      if (!updateError) {
+        await loadUsers();
+        setSelectedUser(null);
+        Alert.alert(
+          'Sucesso', 
+          status === 'aprovado' 
+            ? 'Cadastro aprovado e cliente salvo no banco da empresa!' 
+            : 'Cadastro reprovado com sucesso!'
+        );
+      } else {
+        Alert.alert('Erro', 'Erro ao atualizar status');
+      }
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      Alert.alert('Erro', 'Erro ao processar aprovação');
     }
   };
 
@@ -254,6 +365,58 @@ export default function AdminUsersScreen({ navigation }) {
                   {getStatusBadge(selectedUser.status)}
                 </View>
 
+                {/* Documentos */}
+                <View style={styles.documentsSection}>
+                  <Text style={styles.sectionTitle}>Documentos</Text>
+                  {loadingDocs ? (
+                    <ActivityIndicator size="small" color="#3B82F6" />
+                  ) : documents && Object.keys(documents).length > 0 ? (
+                    <View style={styles.documentsGrid}>
+                      {documents.selfie && (
+                        <TouchableOpacity 
+                          style={styles.docCard}
+                          onPress={() => setViewingImage({ url: documents.selfie, title: 'Selfie' })}
+                        >
+                          <Image source={{ uri: documents.selfie }} style={styles.docImage} />
+                          <Text style={styles.docLabel}>Selfie</Text>
+                        </TouchableOpacity>
+                      )}
+                      {documents.cnh && (
+                        <TouchableOpacity 
+                          style={styles.docCard}
+                          onPress={() => setViewingImage({ url: documents.cnh, title: 'CNH' })}
+                        >
+                          <Image source={{ uri: documents.cnh }} style={styles.docImage} />
+                          <Text style={styles.docLabel}>CNH</Text>
+                        </TouchableOpacity>
+                      )}
+                      {documents.ctps && (
+                        <TouchableOpacity 
+                          style={styles.docCard}
+                          onPress={() => setViewingImage({ url: documents.ctps, title: 'CTPS' })}
+                        >
+                          <Image source={{ uri: documents.ctps }} style={styles.docImage} />
+                          <Text style={styles.docLabel}>CTPS</Text>
+                        </TouchableOpacity>
+                      )}
+                      {documents.comprovante && (
+                        <TouchableOpacity 
+                          style={styles.docCard}
+                          onPress={() => setViewingImage({ url: documents.comprovante, title: 'Comprovante' })}
+                        >
+                          <Image source={{ uri: documents.comprovante }} style={styles.docImage} />
+                          <Text style={styles.docLabel}>Comprovante</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.noDocsContainer}>
+                      <FileText size={32} color="#9CA3AF" />
+                      <Text style={styles.noDocsText}>Nenhum documento enviado</Text>
+                    </View>
+                  )}
+                </View>
+
                 <View style={styles.modalActions}>
                   {selectedUser.status !== 'aprovado' && (
                     <TouchableOpacity
@@ -285,6 +448,33 @@ export default function AdminUsersScreen({ navigation }) {
               </>
             )}
           </View>
+        </View>
+      </Modal>
+
+      {/* Image Viewer Modal */}
+      <Modal
+        visible={viewingImage !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setViewingImage(null)}
+      >
+        <View style={styles.imageViewerOverlay}>
+          <TouchableOpacity 
+            style={styles.imageViewerClose}
+            onPress={() => setViewingImage(null)}
+          >
+            <XCircle size={32} color="#FFFFFF" />
+          </TouchableOpacity>
+          {viewingImage && (
+            <>
+              <Text style={styles.imageViewerTitle}>{viewingImage.title}</Text>
+              <Image 
+                source={{ uri: viewingImage.url }} 
+                style={styles.imageViewerImage}
+                resizeMode="contain"
+              />
+            </>
+          )}
         </View>
       </Modal>
     </SafeAreaView>
@@ -502,5 +692,73 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  documentsSection: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1F2937',
+    marginBottom: 12,
+  },
+  documentsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  docCard: {
+    width: '48%',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  docImage: {
+    width: '100%',
+    height: 120,
+    backgroundColor: '#F3F4F6',
+  },
+  docLabel: {
+    padding: 8,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'center',
+  },
+  noDocsContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  noDocsText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+  },
+  imageViewerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageViewerClose: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 1,
+  },
+  imageViewerTitle: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  imageViewerImage: {
+    width: '90%',
+    height: '80%',
   },
 });

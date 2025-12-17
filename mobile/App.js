@@ -10,6 +10,7 @@ import { Home, FileText, DollarSign, MessageCircle, Users, Clock } from 'lucide-
 import WelcomeScreen from './screens/WelcomeScreen';
 import RegisterScreen from './screens/RegisterScreen';
 import LoginScreen from './screens/LoginScreen';
+import CompanySelectScreen from './screens/CompanySelectScreen';
 import DocumentUploadScreen from './screens/DocumentUploadScreen';
 import HomeScreen from './screens/HomeScreen';
 import RequestScreen from './screens/RequestScreen';
@@ -22,6 +23,9 @@ import AdminUsersScreen from './screens/AdminUsersScreen';
 import AdminRequestsScreen from './screens/AdminRequestsScreen';
 import AdminDocumentsScreen from './screens/AdminDocumentsScreen';
 import AdminPaymentsScreen from './screens/AdminPaymentsScreen';
+
+// Multi-tenant
+import { initializeSupabase } from './lib/supabaseMulti';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -97,6 +101,9 @@ export default function App() {
   const [admin, setAdmin] = useState(null);
 
   useEffect(() => {
+    // Inicializar sistema multi-tenant
+    initializeSupabase();
+    
     checkUser();
     
     // Poll for user/admin changes to handle logout
@@ -140,6 +147,7 @@ export default function App() {
               <Stack.Screen name="Welcome" component={WelcomeScreen} />
               <Stack.Screen name="Register" component={RegisterScreen} />
               <Stack.Screen name="Login" component={LoginScreen} />
+              <Stack.Screen name="CompanySelect" component={CompanySelectScreen} />
               <Stack.Screen name="DocumentUpload" component={DocumentUploadScreen} />
             </>
           ) : admin ? (

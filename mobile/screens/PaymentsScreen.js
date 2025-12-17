@@ -9,12 +9,15 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CheckCircle, Clock, AlertCircle } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { getSupabase } from '../lib/supabaseMulti';
 
 export default function PaymentsScreen() {
   const [user, setUser] = useState(null);
   const [pagamentos, setPagamentos] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Obter instância do Supabase
+  const supabase = getSupabase();
 
   useEffect(() => {
     loadData();

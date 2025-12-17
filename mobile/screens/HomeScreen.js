@@ -7,10 +7,11 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LogOut, User, FileText, DollarSign, Clock } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { getSupabase } from '../lib/supabaseMulti';
 
 export default function HomeScreen({ navigation }) {
   const [user, setUser] = useState(null);
@@ -21,6 +22,9 @@ export default function HomeScreen({ navigation }) {
     proxPagamento: null,
   });
   const [refreshing, setRefreshing] = useState(false);
+  
+  // Obter instância do Supabase
+  const supabase = getSupabase();
 
   useEffect(() => {
     loadData();
@@ -120,9 +124,16 @@ export default function HomeScreen({ navigation }) {
         }
       >
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Olá,</Text>
-            <Text style={styles.userName}>{user?.nome}</Text>
+          <View style={styles.headerLeft}>
+            <Image 
+              source={require('../assets/images/logo.png')} 
+              style={styles.headerLogo}
+              resizeMode="contain"
+            />
+            <View>
+              <Text style={styles.greeting}>Olá,</Text>
+              <Text style={styles.userName}>{user?.nome}</Text>
+            </View>
           </View>
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
             <LogOut size={24} color="#EF4444" />
@@ -226,6 +237,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
     backgroundColor: '#FFFFFF',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerLogo: {
+    width: 48,
+    height: 48,
   },
   greeting: {
     fontSize: 16,

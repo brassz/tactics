@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ArrowLeft } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabaseMulti';
 
 export default function LoginScreen({ navigation }) {
   const [cpf, setCpf] = useState('');
@@ -36,7 +36,7 @@ export default function LoginScreen({ navigation }) {
     setLoading(true);
 
     try {
-      // Primeiro, verificar se é um administrador
+      // Verificar se é admin
       const { data: admin, error: adminError } = await supabase
         .from('admins')
         .select('*')
@@ -44,10 +44,9 @@ export default function LoginScreen({ navigation }) {
         .single();
 
       if (admin && !adminError) {
-        // É um administrador - fazer login como admin
-        await AsyncStorage.setItem('admin', JSON.stringify(admin));
+        // Redirecionar para seleção de empresa
+        navigation.navigate('CompanySelect', { cpf });
         setLoading(false);
-        // O app vai recarregar automaticamente através do polling do AsyncStorage
         return;
       }
 

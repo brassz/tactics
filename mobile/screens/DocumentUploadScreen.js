@@ -12,9 +12,8 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system';
 import { Camera, Upload, CheckCircle } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { getSupabase, supabaseStorage } from '../lib/supabaseMulti';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function DocumentUploadScreen({ route, navigation }) {
@@ -22,11 +21,13 @@ export default function DocumentUploadScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [documents, setDocuments] = useState({
     selfie: null,
-    cnhRg: null,
+    cnh: null,
     comprovanteEndereco: null,
-    comprovanteRenda: null,
     carteiraTrabalho: null,
   });
+  
+  // Obter instância do Supabase
+  const supabase = getSupabase();
 
   const takeSelfie = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -72,37 +73,53 @@ export default function DocumentUploadScreen({ route, navigation }) {
   };
 
   const uploadFile = async (file, path) => {
-    const fileExt = file.uri.split('.').pop();
-    const fileName = `${path}/${user.id}_${Date.now()}.${fileExt}`;
+    try {
+      const fileExt = file.uri.split('.').pop();
+      const fileName = `${path}/${user.id}_${Date.now()}.${fileExt}`;
 
-    // Ler arquivo como base64
-    const base64 = await FileSystem.readAsStringAsync(file.uri, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-
-    // Converter base64 para ArrayBuffer
-    const arrayBuffer = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-
-    const { data, error } = await supabase.storage
-      .from('user-documents')
-      .upload(fileName, arrayBuffer, {
-        contentType: file.mimeType || 'image/jpeg',
-        upsert: false,
+      // Ler arquivo usando XMLHttpRequest (funciona no React Native)
+      const xhr = new XMLHttpRequest();
+      const fileData = await new Promise((resolve, reject) => {
+        xhr.onload = () => {
+          resolve(xhr.response);
+        };
+        xhr.onerror = () => {
+          reject(new Error('Failed to read file'));
+        };
+        xhr.responseType = 'arraybuffer';
+        xhr.open('GET', file.uri);
+        xhr.send();
       });
 
-    if (error) throw error;
+      // Upload para Supabase Storage (centralizado)
+      const { data, error } = await supabaseStorage.storage
+        .from('user-documents')
+        .upload(fileName, fileData, {
+          contentType: file.mimeType || 'image/jpeg',
+          upsert: false,
+        });
 
-    const { data: { publicUrl } } = supabase.storage
-      .from('user-documents')
-      .getPublicUrl(fileName);
+      if (error) {
+        console.error('Supabase upload error:', error);
+        throw error;
+      }
 
-    return publicUrl;
+      // Obter URL pública
+      const { data: { publicUrl } } = supabaseStorage.storage
+        .from('user-documents')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Upload error details:', error);
+      throw error;
+    }
   };
 
   const handleSubmit = async () => {
     // Validar se todos os documentos foram enviados
-    if (!documents.selfie || !documents.cnhRg || !documents.comprovanteEndereco || 
-        !documents.comprovanteRenda || !documents.carteiraTrabalho) {
+    if (!documents.selfie || !documents.cnh || !documents.comprovanteEndereco || 
+        !documents.carteiraTrabalho) {
       Alert.alert('Erro', 'Por favor, envie todos os documentos');
       return;
     }
@@ -112,9 +129,8 @@ export default function DocumentUploadScreen({ route, navigation }) {
     try {
       // Upload de todos os arquivos
       const selfieUrl = await uploadFile(documents.selfie, 'selfies');
-      const cnhRgUrl = await uploadFile(documents.cnhRg, 'cnh-rg');
+      const cnhUrl = await uploadFile(documents.cnh, 'cnh');
       const enderecoUrl = await uploadFile(documents.comprovanteEndereco, 'comprovantes-endereco');
-      const rendaUrl = await uploadFile(documents.comprovanteRenda, 'comprovantes-renda');
       const carteiraUrl = await uploadFile(documents.carteiraTrabalho, 'carteiras-trabalho');
 
       // Salvar no banco
@@ -124,9 +140,9 @@ export default function DocumentUploadScreen({ route, navigation }) {
           {
             id_user: user.id,
             selfie_url: selfieUrl,
-            cnh_rg_url: cnhRgUrl,
+            cnh_rg_url: cnhUrl,
             comprovante_endereco_url: enderecoUrl,
-            comprovante_renda_url: rendaUrl,
+            comprovante_renda_url: null,
             carteira_trabalho_pdf_url: carteiraUrl,
             status_documentos: 'em_analise',
           },
@@ -184,16 +200,16 @@ export default function DocumentUploadScreen({ route, navigation }) {
             )}
           </View>
 
-          {/* RG/CNH */}
+          {/* CNH */}
           <View style={styles.documentItem}>
-            <Text style={styles.documentTitle}>🪪 RG ou CNH</Text>
-            {documents.cnhRg ? (
+            <Text style={styles.documentTitle}>🪪 CNH</Text>
+            {documents.cnh ? (
               <View style={styles.uploadedContainer}>
                 <CheckCircle size={20} color="#10B981" />
                 <Text style={styles.uploadedText}>Documento enviado</Text>
               </View>
             ) : (
-              <TouchableOpacity style={styles.uploadButton} onPress={() => pickImage('cnhRg')}>
+              <TouchableOpacity style={styles.uploadButton} onPress={() => pickImage('cnh')}>
                 <Upload size={24} color="#3B82F6" />
                 <Text style={styles.uploadButtonText}>Enviar foto</Text>
               </TouchableOpacity>
@@ -212,25 +228,6 @@ export default function DocumentUploadScreen({ route, navigation }) {
               <TouchableOpacity 
                 style={styles.uploadButton} 
                 onPress={() => pickDocument('comprovanteEndereco')}
-              >
-                <Upload size={24} color="#3B82F6" />
-                <Text style={styles.uploadButtonText}>Enviar arquivo</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Comprovante de Renda */}
-          <View style={styles.documentItem}>
-            <Text style={styles.documentTitle}>💰 Comprovante de Renda</Text>
-            {documents.comprovanteRenda ? (
-              <View style={styles.uploadedContainer}>
-                <CheckCircle size={20} color="#10B981" />
-                <Text style={styles.uploadedText}>Documento enviado</Text>
-              </View>
-            ) : (
-              <TouchableOpacity 
-                style={styles.uploadButton} 
-                onPress={() => pickDocument('comprovanteRenda')}
               >
                 <Upload size={24} color="#3B82F6" />
                 <Text style={styles.uploadButtonText}>Enviar arquivo</Text>

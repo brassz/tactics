@@ -1,13 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
-import { DollarSign } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Image } from 'react-native';
 
 export default function WelcomeScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <DollarSign size={80} color="#3B82F6" />
+          <Image 
+            source={require('../assets/images/logo.png')} 
+            style={styles.logo}
+            resizeMode="contain"
+          />
         </View>
         
         <Text style={styles.title}>Sistema Financeiro</Text>
@@ -54,6 +57,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 32,
+  },
+  logo: {
+    width: 80,
+    height: 80,
   },
   title: {
     fontSize: 32,

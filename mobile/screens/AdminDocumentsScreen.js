@@ -13,13 +13,16 @@ import {
   Image,
 } from 'react-native';
 import { ArrowLeft, CheckCircle, XCircle, Clock, Eye, Download, X } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { getSupabase } from '../lib/supabaseMulti';
 
 export default function AdminDocumentsScreen({ navigation }) {
   const [documents, setDocuments] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [viewingImage, setViewingImage] = useState(null);
+  
+  // Obter instância do Supabase
+  const supabase = getSupabase();
 
   useEffect(() => {
     loadDocuments();
@@ -214,22 +217,80 @@ export default function AdminDocumentsScreen({ navigation }) {
         onRequestClose={() => setSelectedDoc(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modal}>
-            <Text style={styles.modalTitle}>Gerenciar Documentos</Text>
+          <ScrollView style={styles.modalScroll}>
+            <View style={styles.modal}>
+              <Text style={styles.modalTitle}>Gerenciar Documentos</Text>
 
-            {selectedDoc && (
-              <>
-                <View style={styles.modalInfo}>
-                  <Text style={styles.modalLabel}>Cliente</Text>
-                  <Text style={styles.modalValue}>{selectedDoc.users.nome}</Text>
-                </View>
+              {selectedDoc && (
+                <>
+                  <View style={styles.modalInfo}>
+                    <Text style={styles.modalLabel}>Cliente</Text>
+                    <Text style={styles.modalValue}>{selectedDoc.users.nome}</Text>
+                    <Text style={styles.clientCpf}>CPF: {selectedDoc.users.cpf}</Text>
+                  </View>
 
-                <View style={styles.modalInfo}>
-                  <Text style={styles.modalLabel}>Status Atual</Text>
-                  {getStatusBadge(selectedDoc.status_documentos)}
-                </View>
+                  <View style={styles.modalInfo}>
+                    <Text style={styles.modalLabel}>Status Atual</Text>
+                    {getStatusBadge(selectedDoc.status_documentos)}
+                  </View>
 
-                <View style={styles.modalActions}>
+                  {/* Documentos Preview */}
+                  <View style={styles.modalInfo}>
+                    <Text style={styles.modalLabel}>Documentos Enviados</Text>
+                    <View style={styles.documentsPreview}>
+                      {selectedDoc.selfie_url && (
+                        <TouchableOpacity
+                          style={styles.previewCard}
+                          onPress={() => setViewingImage(selectedDoc.selfie_url)}
+                        >
+                          <Image
+                            source={{ uri: selectedDoc.selfie_url }}
+                            style={styles.previewImage}
+                          />
+                          <Text style={styles.previewLabel}>Selfie</Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {selectedDoc.cnh_rg_url && (
+                        <TouchableOpacity
+                          style={styles.previewCard}
+                          onPress={() => setViewingImage(selectedDoc.cnh_rg_url)}
+                        >
+                          <Image
+                            source={{ uri: selectedDoc.cnh_rg_url }}
+                            style={styles.previewImage}
+                          />
+                          <Text style={styles.previewLabel}>CNH</Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {selectedDoc.comprovante_endereco_url && (
+                        <TouchableOpacity
+                          style={styles.previewCard}
+                          onPress={() => openDocument(selectedDoc.comprovante_endereco_url)}
+                        >
+                          <View style={styles.previewImagePlaceholder}>
+                            <Download size={24} color="#6B7280" />
+                          </View>
+                          <Text style={styles.previewLabel}>Comp. End.</Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {selectedDoc.carteira_trabalho_pdf_url && (
+                        <TouchableOpacity
+                          style={styles.previewCard}
+                          onPress={() => openDocument(selectedDoc.carteira_trabalho_pdf_url)}
+                        >
+                          <View style={styles.previewImagePlaceholder}>
+                            <Download size={24} color="#6B7280" />
+                          </View>
+                          <Text style={styles.previewLabel}>CTPS</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+
+                  <View style={styles.modalActions}>
                   {selectedDoc.status_documentos !== 'aprovado' && (
                     <TouchableOpacity
                       style={[styles.modalButton, styles.approveButton]}
@@ -269,7 +330,8 @@ export default function AdminDocumentsScreen({ navigation }) {
                 </View>
               </>
             )}
-          </View>
+            </View>
+          </ScrollView>
         </View>
       </Modal>
 
@@ -423,7 +485,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+  },
+  modalScroll: {
+    flex: 1,
+    width: '100%',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
   },
   modal: {
     backgroundColor: '#FFFFFF',
@@ -431,6 +498,7 @@ const styles = StyleSheet.create({
     padding: 24,
     width: '100%',
     maxWidth: 400,
+    marginVertical: 20,
   },
   modalTitle: {
     fontSize: 22,
@@ -498,5 +566,39 @@ const styles = StyleSheet.create({
   fullImage: {
     width: '90%',
     height: '80%',
+  },
+  documentsPreview: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 8,
+  },
+  previewCard: {
+    width: '47%',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    padding: 8,
+  },
+  previewImage: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    backgroundColor: '#E5E7EB',
+  },
+  previewImagePlaceholder: {
+    width: '100%',
+    height: 120,
+    borderRadius: 8,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewLabel: {
+    fontSize: 12,
+    color: '#374151',
+    fontWeight: '500',
+    marginTop: 8,
+    textAlign: 'center',
   },
 });

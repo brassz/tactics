@@ -11,13 +11,16 @@ import {
   Alert,
 } from 'react-native';
 import { ArrowLeft, CheckCircle, XCircle, Clock, DollarSign } from 'lucide-react-native';
-import { supabase } from '../lib/supabase';
+import { getSupabase } from '../lib/supabaseMulti';
 
 export default function AdminRequestsScreen({ navigation }) {
   const [requests, setRequests] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [filter, setFilter] = useState('all');
+  
+  // Obter instância do Supabase
+  const supabase = getSupabase();
 
   useEffect(() => {
     loadRequests();
