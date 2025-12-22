@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,47 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ArrowLeft } from 'lucide-react-native';
+import * as LocalAuthentication from 'expo-local-authentication';
+import { ArrowLeft, Fingerprint } from 'lucide-react-native';
 import { supabase } from '../lib/supabaseMulti';
 
 export default function LoginScreen({ navigation }) {
   const [cpf, setCpf] = useState('');
   const [loading, setLoading] = useState(false);
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricAuthenticated, setBiometricAuthenticated] = useState(false);
+
+  useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    const compatible = await LocalAuthentication.hasHardwareAsync();
+    const enrolled = await LocalAuthentication.isEnrolledAsync();
+    setBiometricAvailable(compatible && enrolled);
+  };
+
+  const authenticateBiometric = async () => {
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Autentique-se para continuar',
+        fallbackLabel: 'Usar senha',
+        cancelLabel: 'Cancelar',
+      });
+
+      if (result.success) {
+        setBiometricAuthenticated(true);
+        return true;
+      } else {
+        Alert.alert('Erro', 'Autenticação falhou. Tente novamente.');
+        return false;
+      }
+    } catch (error) {
+      console.error('Biometric auth error:', error);
+      Alert.alert('Erro', 'Erro ao autenticar. Tente novamente.');
+      return false;
+    }
+  };
 
   const formatCPF = (text) => {
     const cleaned = text.replace(/\D/g, '');
@@ -31,6 +66,14 @@ export default function LoginScreen({ navigation }) {
     if (cpf.length !== 11) {
       Alert.alert('Erro', 'CPF deve conter 11 dígitos');
       return;
+    }
+
+    // Verificar autenticação biométrica primeiro
+    if (biometricAvailable && !biometricAuthenticated) {
+      const authenticated = await authenticateBiometric();
+      if (!authenticated) {
+        return;
+      }
     }
 
     setLoading(true);
@@ -131,6 +174,24 @@ export default function LoginScreen({ navigation }) {
             />
           </View>
 
+          {biometricAvailable && !biometricAuthenticated && (
+            <View style={styles.biometricInfo}>
+              <Fingerprint size={20} color="#3B82F6" />
+              <Text style={styles.biometricText}>
+                Autenticação biométrica será solicitada
+              </Text>
+            </View>
+          )}
+
+          {biometricAuthenticated && (
+            <View style={styles.biometricSuccess}>
+              <Fingerprint size={20} color="#10B981" />
+              <Text style={styles.biometricSuccessText}>
+                Autenticado com sucesso!
+              </Text>
+            </View>
+          )}
+
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
             onPress={handleLogin}
@@ -207,5 +268,31 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  biometricInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  biometricText: {
+    fontSize: 14,
+    color: '#3B82F6',
+    flex: 1,
+  },
+  biometricSuccess: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#D1FAE5',
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  biometricSuccessText: {
+    fontSize: 14,
+    color: '#10B981',
+    flex: 1,
   },
 });

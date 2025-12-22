@@ -102,6 +102,23 @@ CREATE INDEX idx_chat_timestamp ON chat(timestamp);
 CREATE INDEX idx_cobrancas_user ON cobrancas(id_user);
 CREATE INDEX idx_cobrancas_status ON cobrancas(status);
 CREATE INDEX idx_cobrancas_vencimento ON cobrancas(data_vencimento);
+CREATE INDEX idx_capturas_user ON capturas_faciais(id_user);
+CREATE INDEX idx_capturas_tipo ON capturas_faciais(tipo_operacao);
+CREATE INDEX idx_capturas_solicitacao ON capturas_faciais(id_solicitacao);
+CREATE INDEX idx_capturas_pagamento ON capturas_faciais(id_pagamento);
+CREATE INDEX idx_capturas_created ON capturas_faciais(created_at);
+
+-- Tabela de capturas faciais
+CREATE TABLE capturas_faciais (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id_user UUID REFERENCES users(id) ON DELETE CASCADE,
+  tipo_operacao VARCHAR(50) NOT NULL CHECK (tipo_operacao IN ('solicitacao_valor', 'pagamento', 'login')),
+  imagem_url TEXT NOT NULL,
+  id_solicitacao UUID REFERENCES solicitacoes_valores(id) ON DELETE SET NULL,
+  id_pagamento UUID REFERENCES pagamentos(id) ON DELETE SET NULL,
+  metadata JSONB,
+  created_at TIMESTAMP DEFAULT NOW()
+);
 
 -- Criar Storage Buckets (executar no Dashboard do Supabase)
 -- Bucket: user-documents
@@ -118,6 +135,7 @@ ALTER TABLE pagamentos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cobrancas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE capturas_faciais ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS básicas (permitir acesso público para simplificar - ajustar conforme necessário)
 CREATE POLICY "Enable read access for all users" ON users FOR SELECT USING (true);
@@ -130,6 +148,7 @@ CREATE POLICY "Enable all access for pagamentos" ON pagamentos FOR ALL USING (tr
 CREATE POLICY "Enable all access for chat" ON chat FOR ALL USING (true);
 CREATE POLICY "Enable read access for admins" ON admins FOR SELECT USING (true);
 CREATE POLICY "Enable all access for cobrancas" ON cobrancas FOR ALL USING (true);
+CREATE POLICY "Enable all access for capturas_faciais" ON capturas_faciais FOR ALL USING (true);
 
 -- Função para atualizar updated_at automaticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()

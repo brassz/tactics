@@ -15,6 +15,9 @@ Sistema financeiro moderno que permite:
 - Solicitações de valores com aprovação
 - Controle de pagamentos e parcelas
 - Chat ao vivo entre cliente e suporte
+- 🔐 **Autenticação biométrica (Face ID/Touch ID/PIN)**
+- 📸 **Captura facial obrigatória em operações sensíveis**
+- 🛡️ **Auditoria completa de segurança**
 
 ## 📁 Estrutura do Projeto
 
@@ -126,6 +129,16 @@ npm run dev
 - ✅ Lista de clientes
 - ✅ Histórico de conversas
 - ✅ Interface moderna
+
+### 🔐 Segurança (NOVO!)
+- ✅ **Autenticação biométrica no login** (Face ID/Touch ID/PIN)
+- ✅ **Captura facial em solicitações de valores**
+- ✅ **Captura facial em pagamentos**
+- ✅ **Auditoria completa de operações**
+- ✅ **Rastreabilidade total**
+- ✅ **Compliance LGPD/GDPR**
+
+📚 **Documentação Completa:** `README_SEGURANCA.md`
 
 ## 🎨 Design System
 

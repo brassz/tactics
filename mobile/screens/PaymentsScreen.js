@@ -6,15 +6,23 @@ import {
   SafeAreaView,
   ScrollView,
   RefreshControl,
+  TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CheckCircle, Clock, AlertCircle } from 'lucide-react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import { CheckCircle, Clock, AlertCircle, CreditCard } from 'lucide-react-native';
 import { getSupabase } from '../lib/supabaseMulti';
+import FacialCaptureModal from '../components/FacialCaptureModal';
 
 export default function PaymentsScreen() {
   const [user, setUser] = useState(null);
   const [pagamentos, setPagamentos] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [showFacialCapture, setShowFacialCapture] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [processing, setProcessing] = useState(false);
   
   // Obter instância do Supabase
   const supabase = getSupabase();
@@ -109,6 +117,132 @@ export default function PaymentsScreen() {
       .reduce((acc, p) => acc + parseFloat(p.valor), 0);
   };
 
+  const uploadFacialImage = async (imageUri) => {
+    try {
+      // Ler arquivo como base64
+      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: 'base64',
+      });
+
+      // Nome único para o arquivo
+      const fileName = `facial-payment-${user.id}-${Date.now()}.jpg`;
+      const filePath = `capturas-faciais/${fileName}`;
+
+      // Converter base64 para arraybuffer
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+
+      // Upload para o Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('user-documents')
+        .upload(filePath, byteArray, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      // Obter URL pública
+      const { data: urlData } = supabase.storage
+        .from('user-documents')
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Error uploading facial image:', error);
+      throw error;
+    }
+  };
+
+  const saveFacialCapture = async (imageUrl, pagamentoId) => {
+    try {
+      const { error } = await supabase
+        .from('capturas_faciais')
+        .insert([
+          {
+            id_user: user.id,
+            tipo_operacao: 'pagamento',
+            imagem_url: imageUrl,
+            id_pagamento: pagamentoId,
+            metadata: {
+              timestamp: new Date().toISOString(),
+              tipo_pagamento: 'pagamento_parcela',
+            },
+          },
+        ]);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving facial capture:', error);
+      throw error;
+    }
+  };
+
+  const handlePaymentClick = (payment) => {
+    if (payment.status === 'pendente' || payment.status === 'atrasado') {
+      Alert.alert(
+        'Confirmar Pagamento',
+        `Confirmar pagamento de R$ ${parseFloat(payment.valor).toFixed(2)}?\n\nPara sua segurança, será necessário realizar uma captura facial.`,
+        [
+          {
+            text: 'Cancelar',
+            style: 'cancel',
+          },
+          {
+            text: 'Confirmar',
+            onPress: () => {
+              setSelectedPayment(payment);
+              setShowFacialCapture(true);
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const handleFacialCapture = async (imageUri) => {
+    setShowFacialCapture(false);
+    await processPayment(imageUri);
+  };
+
+  const processPayment = async (imageUri) => {
+    if (!selectedPayment) return;
+
+    setProcessing(true);
+
+    try {
+      // 1. Fazer upload da imagem facial
+      const imageUrl = await uploadFacialImage(imageUri);
+
+      // 2. Atualizar status do pagamento
+      const { error: paymentError } = await supabase
+        .from('pagamentos')
+        .update({
+          status: 'pago',
+          data_pagamento: new Date().toISOString(),
+        })
+        .eq('id', selectedPayment.id);
+
+      if (paymentError) throw paymentError;
+
+      // 3. Salvar captura facial vinculada ao pagamento
+      await saveFacialCapture(imageUrl, selectedPayment.id);
+
+      Alert.alert('Sucesso!', 'Pagamento realizado com sucesso');
+      setSelectedPayment(null);
+      await loadData();
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      Alert.alert('Erro', 'Erro ao processar pagamento. Tente novamente.');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -146,7 +280,13 @@ export default function PaymentsScreen() {
             </View>
           ) : (
             pagamentos.map((item) => (
-              <View key={item.id} style={styles.paymentCard}>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.paymentCard}
+                onPress={() => handlePaymentClick(item)}
+                disabled={item.status === 'pago' || item.status === 'cancelado'}
+                activeOpacity={item.status === 'pago' || item.status === 'cancelado' ? 1 : 0.7}
+              >
                 <View style={styles.paymentHeader}>
                   {getStatusIcon(item.status)}
                   <View style={styles.paymentInfo}>
@@ -180,11 +320,39 @@ export default function PaymentsScreen() {
                     {new Date(item.data_pagamento).toLocaleDateString('pt-BR')}
                   </Text>
                 )}
-              </View>
+                {(item.status === 'pendente' || item.status === 'atrasado') && (
+                  <TouchableOpacity
+                    style={styles.payButton}
+                    onPress={() => handlePaymentClick(item)}
+                  >
+                    <CreditCard size={16} color="#FFFFFF" />
+                    <Text style={styles.payButtonText}>Pagar Agora</Text>
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
             ))
           )}
         </View>
       </ScrollView>
+
+      {/* Facial Capture Modal */}
+      <FacialCaptureModal
+        visible={showFacialCapture}
+        onClose={() => {
+          setShowFacialCapture(false);
+          setSelectedPayment(null);
+        }}
+        onCapture={handleFacialCapture}
+        title="Captura Facial - Pagamento"
+      />
+
+      {/* Processing Overlay */}
+      {processing && (
+        <View style={styles.processingOverlay}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.processingText}>Processando pagamento...</Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -296,5 +464,37 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#10B981',
     marginTop: 8,
+  },
+  payButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3B82F6',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginTop: 12,
+    gap: 8,
+  },
+  payButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  processingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  processingText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });

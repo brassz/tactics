@@ -11,8 +11,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DollarSign, Clock, CheckCircle, XCircle } from 'lucide-react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import { DollarSign, Clock, CheckCircle, XCircle, Camera } from 'lucide-react-native';
 import { getSupabase } from '../lib/supabaseMulti';
+import FacialCaptureModal from '../components/FacialCaptureModal';
 
 export default function RequestScreen() {
   const [user, setUser] = useState(null);
@@ -20,6 +22,8 @@ export default function RequestScreen() {
   const [justificativa, setJustificativa] = useState('');
   const [loading, setLoading] = useState(false);
   const [solicitacoes, setSolicitacoes] = useState([]);
+  const [showFacialCapture, setShowFacialCapture] = useState(false);
+  const [facialImageUri, setFacialImageUri] = useState(null);
   
   // Obter instância do Supabase
   const supabase = getSupabase();
@@ -53,6 +57,78 @@ export default function RequestScreen() {
     return number.toFixed(2);
   };
 
+  const uploadFacialImage = async (imageUri) => {
+    try {
+      // Ler arquivo como base64
+      const base64 = await FileSystem.readAsStringAsync(imageUri, {
+        encoding: 'base64',
+      });
+
+      // Nome único para o arquivo
+      const fileName = `facial-capture-${user.id}-${Date.now()}.jpg`;
+      const filePath = `capturas-faciais/${fileName}`;
+
+      // Converter base64 para arraybuffer
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+
+      // Upload para o Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('user-documents')
+        .upload(filePath, byteArray, {
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
+
+      if (error) throw error;
+
+      // Obter URL pública
+      const { data: urlData } = supabase.storage
+        .from('user-documents')
+        .getPublicUrl(filePath);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      console.error('Error uploading facial image:', error);
+      throw error;
+    }
+  };
+
+  const saveFacialCapture = async (imageUrl, solicitacaoId) => {
+    try {
+      const { error } = await supabase
+        .from('capturas_faciais')
+        .insert([
+          {
+            id_user: user.id,
+            tipo_operacao: 'solicitacao_valor',
+            imagem_url: imageUrl,
+            id_solicitacao: solicitacaoId,
+            metadata: {
+              timestamp: new Date().toISOString(),
+              tipo_solicitacao: 'solicitacao_valor',
+            },
+          },
+        ]);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error saving facial capture:', error);
+      throw error;
+    }
+  };
+
+  const handleFacialCapture = async (imageUri) => {
+    setFacialImageUri(imageUri);
+    setShowFacialCapture(false);
+    // Após capturar, continuar com o envio da solicitação
+    await submitRequest(imageUri);
+  };
+
   const handleSubmit = async () => {
     if (!valor) {
       Alert.alert('Erro', 'Por favor, informe o valor desejado');
@@ -65,10 +141,33 @@ export default function RequestScreen() {
       return;
     }
 
+    // Solicitar captura facial antes de enviar
+    Alert.alert(
+      'Captura Facial Obrigatória',
+      'Para sua segurança, precisamos confirmar sua identidade através de uma foto.',
+      [
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+        {
+          text: 'Continuar',
+          onPress: () => setShowFacialCapture(true),
+        },
+      ]
+    );
+  };
+
+  const submitRequest = async (imageUri) => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      // 1. Fazer upload da imagem facial
+      const imageUrl = await uploadFacialImage(imageUri);
+
+      // 2. Criar solicitação
+      const valorFloat = parseFloat(valor);
+      const { data: solicitacaoData, error: solicitacaoError } = await supabase
         .from('solicitacoes_valores')
         .insert([
           {
@@ -77,17 +176,24 @@ export default function RequestScreen() {
             justificativa: justificativa || null,
             status: 'aguardando',
           },
-        ]);
+        ])
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (solicitacaoError) throw solicitacaoError;
+
+      // 3. Salvar captura facial vinculada à solicitação
+      await saveFacialCapture(imageUrl, solicitacaoData.id);
 
       Alert.alert('Sucesso!', 'Solicitação enviada com sucesso');
       setValor('');
       setJustificativa('');
+      setFacialImageUri(null);
       await loadSolicitacoes(user.id);
     } catch (error) {
       console.error('Error submitting request:', error);
       Alert.alert('Erro', 'Erro ao enviar solicitação. Tente novamente.');
+      setFacialImageUri(null);
     } finally {
       setLoading(false);
     }
@@ -223,6 +329,14 @@ export default function RequestScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Facial Capture Modal */}
+      <FacialCaptureModal
+        visible={showFacialCapture}
+        onClose={() => setShowFacialCapture(false)}
+        onCapture={handleFacialCapture}
+        title="Captura Facial - Solicitação"
+      />
     </SafeAreaView>
   );
 }
