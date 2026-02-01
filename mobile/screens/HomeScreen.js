@@ -226,7 +226,7 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#0F172A',
   },
   scrollView: {
     flex: 1,
@@ -236,7 +236,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -249,25 +251,27 @@ const styles = StyleSheet.create({
   },
   greeting: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#CBD5E1',
   },
   userName: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F1F5F9',
   },
   logoutButton: {
     padding: 8,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 20,
     margin: 16,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 2,
   },
@@ -280,7 +284,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#F1F5F9',
     marginBottom: 12,
   },
   statusContainer: {
@@ -296,7 +300,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   noDataText: {
-    color: '#6B7280',
+    color: '#CBD5E1',
     fontSize: 14,
   },
   statsContainer: {
@@ -306,25 +310,27 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 2,
   },
   statValue: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F1F5F9',
     marginTop: 8,
   },
   statLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#CBD5E1',
     marginTop: 4,
   },
   paymentInfo: {
@@ -337,16 +343,18 @@ const styles = StyleSheet.create({
   },
   paymentDate: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#CBD5E1',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#1E3A8A',
     padding: 16,
     borderRadius: 12,
     marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#3B82F6',
   },
   actionButtonText: {
     fontSize: 16,

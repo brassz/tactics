@@ -274,7 +274,7 @@ export default function DocumentUploadScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0F172A',
   },
   scrollView: {
     flex: 1,
@@ -285,12 +285,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F1F5F9',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#CBD5E1',
     marginBottom: 32,
   },
   documentItem: {
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
   documentTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#374151',
+    color: '#F1F5F9',
     marginBottom: 12,
   },
   uploadButton: {
@@ -307,11 +307,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#1E3A8A',
     paddingVertical: 16,
     borderRadius: 12,
     borderWidth: 2,
-    borderColor: '#DBEAFE',
+    borderColor: '#3B82F6',
     borderStyle: 'dashed',
   },
   uploadButtonText: {
@@ -323,10 +323,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#064E3B',
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#10B981',
   },
   uploadedText: {
     color: '#10B981',

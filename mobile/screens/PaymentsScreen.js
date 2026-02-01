@@ -360,19 +360,21 @@ export default function PaymentsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#0F172A',
   },
   scrollView: {
     flex: 1,
   },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     padding: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F1F5F9',
   },
   summaryContainer: {
     flexDirection: 'row',
@@ -382,23 +384,26 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     padding: 20,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 2,
   },
   summaryLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#CBD5E1',
     marginBottom: 8,
   },
   summaryValue: {
     fontSize: 24,
     fontWeight: 'bold',
+    color: '#F1F5F9',
   },
   listContainer: {
     padding: 24,
@@ -407,27 +412,31 @@ const styles = StyleSheet.create({
   listTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1F2937',
+    color: '#F1F5F9',
     marginBottom: 16,
   },
   emptyState: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     padding: 32,
     borderRadius: 12,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   emptyText: {
-    color: '#6B7280',
+    color: '#CBD5E1',
     fontSize: 14,
   },
   paymentCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 1,
   },
@@ -443,12 +452,12 @@ const styles = StyleSheet.create({
   paymentValue: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F1F5F9',
     marginBottom: 4,
   },
   paymentDate: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#CBD5E1',
   },
   statusBadge: {
     alignSelf: 'flex-start',

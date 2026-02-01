@@ -151,7 +151,7 @@ export default function LoginScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color="#1F2937" />
+          <ArrowLeft size={24} color="#F1F5F9" />
         </TouchableOpacity>
       </View>
 
@@ -212,12 +212,15 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0F172A',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
+    backgroundColor: '#1E293B',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
   },
   content: {
     flex: 1,
@@ -226,12 +229,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F1F5F9',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#CBD5E1',
     marginBottom: 32,
   },
   form: {
@@ -243,16 +246,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#F1F5F9',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#334155',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1E293B',
+    color: '#F1F5F9',
   },
   button: {
     backgroundColor: '#3B82F6',
@@ -272,10 +276,12 @@ const styles = StyleSheet.create({
   biometricInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#1E3A8A',
     padding: 12,
     borderRadius: 8,
     gap: 8,
+    borderWidth: 1,
+    borderColor: '#3B82F6',
   },
   biometricText: {
     fontSize: 14,
@@ -285,10 +291,12 @@ const styles = StyleSheet.create({
   biometricSuccess: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#064E3B',
     padding: 12,
     borderRadius: 8,
     gap: 8,
+    borderWidth: 1,
+    borderColor: '#10B981',
   },
   biometricSuccessText: {
     fontSize: 14,

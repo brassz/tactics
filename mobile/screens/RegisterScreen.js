@@ -358,12 +358,15 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0F172A',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
+    backgroundColor: '#1E293B',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
   },
   scrollView: {
     flex: 1,
@@ -374,12 +377,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F1F5F9',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: '#6B7280',
+    color: '#CBD5E1',
     marginBottom: 32,
   },
   form: {
@@ -391,21 +394,22 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#374151',
+    color: '#F1F5F9',
   },
   hint: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#CBD5E1',
     marginTop: 4,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
+    borderColor: '#334155',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1E293B',
+    color: '#F1F5F9',
   },
   button: {
     backgroundColor: '#3B82F6',
@@ -424,7 +428,7 @@ const styles = StyleSheet.create({
   },
   requiredNote: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#CBD5E1',
     fontStyle: 'italic',
     marginTop: -8,
   },
@@ -434,20 +438,20 @@ const styles = StyleSheet.create({
   },
   cidadeButton: {
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: '#334155',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#1E293B',
   },
   cidadeButtonSelected: {
     borderColor: '#3B82F6',
-    backgroundColor: '#EFF6FF',
+    backgroundColor: '#1E3A8A',
   },
   cidadeButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#CBD5E1',
     textAlign: 'center',
   },
   cidadeButtonTextSelected: {

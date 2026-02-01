@@ -195,22 +195,22 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#0F172A',
   },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     padding: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#334155',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: '#F1F5F9',
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#CBD5E1',
     marginTop: 4,
   },
   chatContainer: {
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     paddingVertical: 48,
   },
   emptyText: {
-    color: '#6B7280',
+    color: '#CBD5E1',
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
@@ -255,11 +255,13 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   bubbleAdmin: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: '#334155',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.3,
     shadowRadius: 2,
     elevation: 1,
   },
@@ -271,7 +273,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   textAdmin: {
-    color: '#1F2937',
+    color: '#F1F5F9',
   },
   messageTime: {
     fontSize: 11,
@@ -281,25 +283,28 @@ const styles = StyleSheet.create({
     color: '#DBEAFE',
   },
   timeAdmin: {
-    color: '#9CA3AF',
+    color: '#CBD5E1',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#1E293B',
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: '#334155',
     gap: 12,
   },
   input: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#0F172A',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
     maxHeight: 100,
+    color: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   sendButton: {
     backgroundColor: '#3B82F6',
