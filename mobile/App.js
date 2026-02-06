@@ -16,6 +16,7 @@ import HomeScreen from './screens/HomeScreen';
 import RequestScreen from './screens/RequestScreen';
 import PaymentsScreen from './screens/PaymentsScreen';
 import ChatScreen from './screens/ChatScreen';
+import WithdrawalScreen from './screens/WithdrawalScreen';
 
 // Admin Screens
 import AdminDashboardScreen from './screens/AdminDashboardScreen';
@@ -153,7 +154,10 @@ export default function App() {
           ) : admin ? (
             <Stack.Screen name="AdminStack" component={AdminStack} />
           ) : (
-            <Stack.Screen name="MainTabs" component={MainTabs} />
+            <>
+              <Stack.Screen name="MainTabs" component={MainTabs} />
+              <Stack.Screen name="Withdrawal" component={WithdrawalScreen} />
+            </>
           )}
         </Stack.Navigator>
       </NavigationContainer>

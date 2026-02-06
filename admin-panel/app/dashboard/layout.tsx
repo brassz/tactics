@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   X,
+  Wallet,
 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -42,6 +43,7 @@ export default function DashboardLayout({
     { href: '/dashboard', icon: Users, label: 'Cadastros' },
     { href: '/dashboard/documents', icon: FileText, label: 'Documentos' },
     { href: '/dashboard/requests', icon: DollarSign, label: 'Solicitações' },
+    { href: '/dashboard/withdrawals', icon: Wallet, label: 'Saques' },
     { href: '/dashboard/payments', icon: CreditCard, label: 'Pagamentos' },
     { href: '/dashboard/charges', icon: CreditCard, label: 'Cobranças' },
     { href: '/dashboard/chat', icon: MessageCircle, label: 'Chat' },

@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LogOut, User, FileText, DollarSign, Clock } from 'lucide-react-native';
+import { LogOut, User, FileText, DollarSign, Clock, Wallet } from 'lucide-react-native';
 import { getSupabase } from '../lib/supabaseMulti';
 
 export default function HomeScreen({ navigation }) {
@@ -20,6 +20,7 @@ export default function HomeScreen({ navigation }) {
     solicitacoes: 0,
     pendentes: 0,
     proxPagamento: null,
+    aprovadasParaSaque: 0,
   });
   const [refreshing, setRefreshing] = useState(false);
   
@@ -35,6 +36,19 @@ export default function HomeScreen({ navigation }) {
     if (userData) {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
+      // Atualizar dados do usuário do banco para pegar status atualizado
+      const { data: updatedUser } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', parsedUser.id)
+        .single();
+      
+      if (updatedUser) {
+        setUser(updatedUser);
+        // Atualizar AsyncStorage com dados atualizados
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+      
       await loadDocuments(parsedUser.id);
       await loadStats(parsedUser.id);
     }
@@ -58,6 +72,19 @@ export default function HomeScreen({ navigation }) {
       .eq('id_user', userId);
 
     const pendentes = solicitacoes?.filter(s => s.status === 'aguardando').length || 0;
+    const aprovadas = solicitacoes?.filter(s => s.status === 'aprovado') || [];
+
+    // Verificar quantas aprovadas não têm solicitação de saque
+    let aprovadasParaSaque = 0;
+    if (aprovadas.length > 0) {
+      const { data: saques } = await supabase
+        .from('withdrawal_requests')
+        .select('id_solicitacao')
+        .in('id_solicitacao', aprovadas.map(s => s.id));
+
+      const saquesIds = new Set(saques?.map(s => s.id_solicitacao) || []);
+      aprovadasParaSaque = aprovadas.filter(s => !saquesIds.has(s.id)).length;
+    }
 
     // Próximo pagamento
     const { data: pagamentos } = await supabase
@@ -72,6 +99,7 @@ export default function HomeScreen({ navigation }) {
       solicitacoes: solicitacoes?.length || 0,
       pendentes,
       proxPagamento: pagamentos?.[0] || null,
+      aprovadasParaSaque,
     });
   };
 
@@ -140,34 +168,37 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* Status dos Documentos */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <FileText size={24} color="#3B82F6" />
-            <Text style={styles.cardTitle}>Status dos Documentos</Text>
-          </View>
-          {documents ? (
+        {/* Status dos Documentos - Só mostra se cadastro não estiver aprovado */}
+        {user?.status !== 'aprovado' && (
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <FileText size={24} color="#3B82F6" />
+              <Text style={styles.cardTitle}>Status do Cadastro</Text>
+            </View>
             <View style={styles.statusContainer}>
               <View
                 style={[
                   styles.statusBadge,
-                  { backgroundColor: `${getStatusColor(documents.status_documentos)}20` },
+                  { backgroundColor: `${getStatusColor(user?.status)}20` },
                 ]}
               >
                 <Text
                   style={[
                     styles.statusText,
-                    { color: getStatusColor(documents.status_documentos) },
+                    { color: getStatusColor(user?.status) },
                   ]}
                 >
-                  {getStatusText(documents.status_documentos)}
+                  {getStatusText(user?.status)}
                 </Text>
               </View>
             </View>
-          ) : (
-            <Text style={styles.noDataText}>Nenhum documento enviado</Text>
-          )}
-        </View>
+            {user?.status === 'pendente' && (
+              <Text style={styles.notificationText}>
+                Seu cadastro está aguardando aprovação. Você receberá uma notificação quando for aprovado.
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* Estatísticas */}
         <View style={styles.statsContainer}>
@@ -203,6 +234,17 @@ export default function HomeScreen({ navigation }) {
         {/* Ações Rápidas */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Ações Rápidas</Text>
+          {stats.aprovadasParaSaque > 0 && (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.caixaButton]}
+              onPress={() => navigation.navigate('Withdrawal')}
+            >
+              <Wallet size={20} color="#10B981" />
+              <Text style={[styles.actionButtonText, { color: '#10B981' }]}>
+                CAIXA - Solicitar Saque ({stats.aprovadasParaSaque})
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => navigation.navigate('Request')}
@@ -303,6 +345,13 @@ const styles = StyleSheet.create({
     color: '#CBD5E1',
     fontSize: 14,
   },
+  notificationText: {
+    color: '#CBD5E1',
+    fontSize: 14,
+    marginTop: 12,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
   statsContainer: {
     flexDirection: 'row',
     gap: 16,
@@ -360,5 +409,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#3B82F6',
+  },
+  caixaButton: {
+    backgroundColor: '#064E3B',
+    borderColor: '#10B981',
   },
 });

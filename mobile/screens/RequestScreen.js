@@ -142,7 +142,8 @@ export default function RequestScreen() {
     }
 
     // Calcular valores do empréstimo
-    const interestRate = 30.00; // Taxa de juros padrão: 30%
+    // Taxa de juros: 40% para valores abaixo de R$ 1.000,00 | 30% para R$ 1.000,00 ou mais
+    const interestRate = valorFloat < 1000 ? 40.00 : 30.00;
     const loanDate = new Date();
     const dueDate = new Date(loanDate);
     // Adicionar 1 mês à data de criação (ex: 06/02/2026 -> 06/03/2026)
@@ -241,13 +242,13 @@ export default function RequestScreen() {
           // Não interrompe o fluxo, apenas loga o erro
         } else {
           // Calcular campos do empréstimo
-          const interestRate = 30.00; // Taxa de juros padrão: 30%
+          // Taxa de juros: 40% para valores abaixo de R$ 1.000,00 | 30% para R$ 1.000,00 ou mais
+          const interestRate = valorFloat < 1000 ? 40.00 : 30.00;
+          const termDays = 30; // Prazo fixo: sempre 30 dias
           const loanDate = new Date();
           const dueDate = new Date(loanDate);
           // Adicionar 1 mês à data de criação (ex: 06/02/2026 -> 06/03/2026)
           dueDate.setMonth(dueDate.getMonth() + 1);
-          // Calcular term_days baseado na diferença real entre as datas
-          const termDays = Math.ceil((dueDate - loanDate) / (1000 * 60 * 60 * 24));
 
           // Criar empréstimo no banco da empresa
           // NOTA: total_amount é uma coluna gerada (calculada automaticamente pelo banco)
@@ -266,7 +267,7 @@ export default function RequestScreen() {
                 created_by: client.id, // Usar client.id como created_by
                 original_amount: valorFloat.toString(),
                 due_date_manually_changed: false,
-                term_days: termDays,
+                term_days: termDays, // Sempre 30 dias
               },
             ]);
 

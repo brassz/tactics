@@ -8,6 +8,10 @@ interface Payment {
   id: string;
   id_user: string;
   valor: number;
+  valor_total?: number;
+  valor_juros?: number;
+  valor_capital?: number;
+  valor_pago?: number;
   data_vencimento: string;
   data_pagamento: string | null;
   status: string;
@@ -24,6 +28,10 @@ export default function PaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentType, setPaymentType] = useState<'integral' | 'juros' | 'parcial'>('integral');
 
   // Form state
   const [formData, setFormData] = useState({
@@ -95,7 +103,15 @@ export default function PaymentsPage() {
     }
   };
 
-  const markAsPaid = async (paymentId: string) => {
+  const markAsPaid = async (paymentId: string, payment?: Payment) => {
+    if (payment && (payment.valor_total || payment.valor_juros || payment.valor_capital)) {
+      // Se tem campos de abatimento, abrir modal para escolher tipo de pagamento
+      setSelectedPayment(payment);
+      setShowPaymentModal(true);
+      return;
+    }
+
+    // Pagamento simples (sem abatimento)
     const { error } = await supabase
       .from('pagamentos')
       .update({
@@ -106,6 +122,51 @@ export default function PaymentsPage() {
 
     if (!error) {
       loadData();
+    }
+  };
+
+  const processPayment = async () => {
+    if (!selectedPayment || !paymentAmount) return;
+
+    const amount = parseFloat(paymentAmount);
+    if (amount <= 0) {
+      alert('O valor deve ser maior que zero');
+      return;
+    }
+
+    const total = selectedPayment.valor_total || selectedPayment.valor;
+    const juros = selectedPayment.valor_juros || 0;
+    const capital = selectedPayment.valor_capital || (total - juros);
+    const alreadyPaid = selectedPayment.valor_pago || 0;
+    const remaining = total - alreadyPaid;
+
+    if (amount > remaining) {
+      alert(`O valor não pode ser maior que o restante (R$ ${remaining.toFixed(2)})`);
+      return;
+    }
+
+    let newPaidAmount = alreadyPaid + amount;
+    let newStatus = newPaidAmount >= total ? 'pago' : 'pendente';
+
+    const { error } = await supabase
+      .from('pagamentos')
+      .update({
+        valor_pago: newPaidAmount,
+        status: newStatus,
+        data_pagamento: newStatus === 'pago' ? new Date().toISOString() : selectedPayment.data_pagamento,
+      })
+      .eq('id', selectedPayment.id);
+
+    if (!error) {
+      setShowPaymentModal(false);
+      setSelectedPayment(null);
+      setPaymentAmount('');
+      setPaymentType('integral');
+      loadData();
+      alert('Pagamento registrado com sucesso!');
+    } else {
+      console.error('Erro ao registrar pagamento:', error);
+      alert('Erro ao registrar pagamento');
     }
   };
 
@@ -257,10 +318,10 @@ export default function PaymentsPage() {
                       )}
                       {payment.status === 'pendente' && (
                         <button
-                          onClick={() => markAsPaid(payment.id)}
+                          onClick={() => markAsPaid(payment.id, payment)}
                           className="text-blue-600 hover:text-blue-800 font-medium"
                         >
-                          Marcar como Pago
+                          Registrar Pagamento
                         </button>
                       )}
                       {payment.status === 'pago' && payment.data_pagamento && (
@@ -368,6 +429,131 @@ export default function PaymentsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Modal */}
+      {showPaymentModal && selectedPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Registrar Pagamento
+            </h2>
+
+            <div className="space-y-4 mb-6">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-600 mb-1">Valor Total</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  R$ {(selectedPayment.valor_total || selectedPayment.valor).toFixed(2)}
+                </p>
+              </div>
+
+              {selectedPayment.valor_juros && selectedPayment.valor_capital && (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 mb-1">
+                    Juros ({(() => {
+                      const capital = parseFloat(selectedPayment.valor_capital.toString());
+                      return capital < 1000 ? '40%' : '30%';
+                    })()})
+                  </p>
+                  <p className="text-xl font-semibold text-blue-900">
+                    R$ {selectedPayment.valor_juros.toFixed(2)}
+                  </p>
+                </div>
+              )}
+
+              {selectedPayment.valor_capital && (
+                <div className="bg-green-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 mb-1">Capital</p>
+                  <p className="text-xl font-semibold text-green-900">
+                    R$ {selectedPayment.valor_capital.toFixed(2)}
+                  </p>
+                </div>
+              )}
+
+              {selectedPayment.valor_pago && selectedPayment.valor_pago > 0 && (
+                <div className="bg-yellow-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 mb-1">Já Pago</p>
+                  <p className="text-xl font-semibold text-yellow-900">
+                    R$ {selectedPayment.valor_pago.toFixed(2)}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Tipo de Pagamento
+                </label>
+                <select
+                  value={paymentType}
+                  onChange={(e) => {
+                    setPaymentType(e.target.value as 'integral' | 'juros' | 'parcial');
+                    const total = selectedPayment.valor_total || selectedPayment.valor;
+                    const juros = selectedPayment.valor_juros || 0;
+                    const alreadyPaid = selectedPayment.valor_pago || 0;
+                    const remaining = total - alreadyPaid;
+                    
+                    if (e.target.value === 'integral') {
+                      // Pagamento integral: valor restante total
+                      setPaymentAmount(remaining.toFixed(2));
+                    } else if (e.target.value === 'juros') {
+                      // Apenas juros: valor dos juros restantes
+                      const jurosRestantes = Math.max(0, juros - alreadyPaid);
+                      setPaymentAmount(jurosRestantes.toFixed(2));
+                    } else {
+                      // Parcial: permitir qualquer valor
+                      setPaymentAmount('');
+                    }
+                  }}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="integral">Pagamento Integral</option>
+                  <option value="juros">Apenas Juros</option>
+                  <option value="parcial">Pagamento Parcial (Qualquer Valor)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Valor a Pagar
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={paymentAmount}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00"
+                  required
+                />
+                {paymentType === 'parcial' && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    O valor será abatido primeiro dos juros, depois do capital
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={processPayment}
+                className="flex-1 bg-blue-500 text-white py-3 rounded-xl font-semibold hover:bg-blue-600 transition-colors"
+              >
+                Registrar Pagamento
+              </button>
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setSelectedPayment(null);
+                  setPaymentAmount('');
+                  setPaymentType('integral');
+                }}
+                className="flex-1 bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}

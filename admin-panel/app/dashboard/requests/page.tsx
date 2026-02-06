@@ -38,12 +38,53 @@ export default function RequestsPage() {
   };
 
   const updateRequestStatus = async (requestId: string, status: string) => {
+    // Atualizar status da solicitação
     const { error } = await supabase
       .from('solicitacoes_valores')
       .update({ status })
       .eq('id', requestId);
 
     if (!error) {
+      // Se foi aprovado, criar pagamento automaticamente
+      if (status === 'aprovado') {
+        const request = requests.find((r) => r.id === requestId);
+        if (request) {
+          // Calcular valores do empréstimo
+          const valor = parseFloat(request.valor.toString());
+          // Taxa de juros: 40% para valores abaixo de R$ 1.000,00 | 30% para R$ 1.000,00 ou mais
+          const interestRate = valor < 1000 ? 40.00 : 30.00;
+          const totalAmount = valor + (valor * interestRate / 100);
+          
+          // Calcular data de vencimento (30 dias = 1 mês)
+          const dueDate = new Date();
+          dueDate.setMonth(dueDate.getMonth() + 1);
+
+          // Criar pagamento automaticamente
+          const { error: paymentError } = await supabase
+            .from('pagamentos')
+            .insert([
+              {
+                id_user: request.id_user,
+                id_solicitacao: requestId,
+                valor: totalAmount,
+                valor_total: totalAmount, // Valor total a pagar
+                valor_juros: valor * interestRate / 100, // Valor dos juros
+                valor_capital: valor, // Valor do capital
+                valor_pago: 0, // Valor já pago (inicialmente 0)
+                data_vencimento: dueDate.toISOString().split('T')[0],
+                status: 'pendente',
+              },
+            ]);
+
+          if (paymentError) {
+            console.error('Erro ao criar pagamento:', paymentError);
+            alert('Solicitação aprovada, mas houve erro ao criar o pagamento. Verifique manualmente.');
+          } else {
+            alert('Solicitação aprovada e pagamento criado automaticamente!');
+          }
+        }
+      }
+
       loadRequests();
       setSelectedRequest(null);
     }
