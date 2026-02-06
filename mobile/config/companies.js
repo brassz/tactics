@@ -18,6 +18,10 @@ export const COMPANY_DATABASES = {
     supabaseUrl: 'https://dtifsfzmnjnllzzlndxv.supabase.co',
     supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR0aWZzZnptbmpubGx6emxuZHh2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcxNjQ5NzUsImV4cCI6MjA3Mjc0MDk3NX0.V40szmRzuvni2J4GK5-qZUR7nBWeUy7ikYy9B7iHxkA',
   },
+  imperatriz: {
+    supabaseUrl: 'https://eppzphzwwpvpoocospxy.supabase.co',
+    supabaseKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwcHpwaHp3d3B2cG9vY29zcHh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk0NTc1MDEsImV4cCI6MjA3NTAzMzUwMX0.QwiFlP-h3sk0-pDBmrOMkQmhWZtewD2wDMPYbXAATXI',
+  },
 };
 
 // Lista de empresas (com informações completas)
@@ -33,6 +37,10 @@ export const COMPANIES = {
   LITORAL: {
     id: 'litoral',
     name: 'LITORAL CRED',
+  },
+  IMPERATRIZ: {
+    id: 'imperatriz',
+    name: 'IMPERATRIZ CRED',
   },
 };
 

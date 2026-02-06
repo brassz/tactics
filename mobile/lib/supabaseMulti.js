@@ -87,5 +87,6 @@ export const getAllSupabaseInstances = () => {
     franca: supabase,
     mogiana: supabase,
     litoral: supabase,
+    imperatriz: supabase,
   };
 };

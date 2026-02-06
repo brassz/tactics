@@ -19,7 +19,7 @@ export default function RegisterScreen({ navigation }) {
   const [nome, setNome] = useState('');
   const [celular, setCelular] = useState('');
   const [email, setEmail] = useState('');
-  const [cidade, setCidade] = useState(''); // FRANCA, MOGIANA, PRAIA GRANDE
+  const [cidade, setCidade] = useState(''); // FRANCA, MOGIANA, PRAIA GRANDE, IMPERATRIZ
   const [endereco, setEndereco] = useState('');
   const [rg, setRg] = useState('');
   const [dataNascimento, setDataNascimento] = useState('');
@@ -31,6 +31,7 @@ export default function RegisterScreen({ navigation }) {
     { id: 'franca', name: 'FRANCA' },
     { id: 'mogiana', name: 'MOGIANA' },
     { id: 'litoral', name: 'PRAIA GRANDE' },
+    { id: 'imperatriz', name: 'IMPERATRIZ' },
   ];
 
   const formatCPF = (text) => {
@@ -136,7 +137,7 @@ export default function RegisterScreen({ navigation }) {
             nome: nome,
             phone: celular,
             email,
-            city: cidade, // Cidade selecionada (FRANCA, MOGIANA, PRAIA GRANDE)
+            city: cidade, // Cidade selecionada (FRANCA, MOGIANA, PRAIA GRANDE, IMPERATRIZ)
             address: endereco,
             rg: rg || null,
             birth_date: birthDateSQL,

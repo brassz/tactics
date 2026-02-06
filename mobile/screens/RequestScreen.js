@@ -13,7 +13,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import { DollarSign, Clock, CheckCircle, XCircle, Camera } from 'lucide-react-native';
-import { getSupabase } from '../lib/supabaseMulti';
+import { getSupabase, getCompanySupabase } from '../lib/supabaseMulti';
 import FacialCaptureModal from '../components/FacialCaptureModal';
 
 export default function RequestScreen() {
@@ -141,18 +141,51 @@ export default function RequestScreen() {
       return;
     }
 
-    // Solicitar captura facial antes de enviar
+    // Calcular valores do empréstimo
+    const interestRate = 30.00; // Taxa de juros padrão: 30%
+    const loanDate = new Date();
+    const dueDate = new Date(loanDate);
+    // Adicionar 1 mês à data de criação (ex: 06/02/2026 -> 06/03/2026)
+    dueDate.setMonth(dueDate.getMonth() + 1);
+    const totalAmount = valorFloat + (valorFloat * interestRate / 100);
+    
+    // Formatar datas para exibição
+    const loanDateStr = loanDate.toLocaleDateString('pt-BR');
+    const dueDateStr = dueDate.toLocaleDateString('pt-BR');
+
+    // Mostrar confirmação do empréstimo
     Alert.alert(
-      'Captura Facial Obrigatória',
-      'Para sua segurança, precisamos confirmar sua identidade através de uma foto.',
+      'Confirmar Empréstimo',
+      `Valor solicitado: R$ ${valorFloat.toFixed(2)}\n\n` +
+      `Taxa de juros: ${interestRate}%\n` +
+      `Data de criação: ${loanDateStr}\n` +
+      `Data de vencimento: ${dueDateStr}\n\n` +
+      `Valor total a pagar: R$ ${totalAmount.toFixed(2)}\n\n` +
+      `Você está solicitando R$ ${valorFloat.toFixed(2)} e pagará R$ ${totalAmount.toFixed(2)} em ${dueDateStr}.`,
       [
         {
           text: 'Cancelar',
           style: 'cancel',
         },
         {
-          text: 'Continuar',
-          onPress: () => setShowFacialCapture(true),
+          text: 'Confirmar',
+          onPress: () => {
+            // Após confirmar, solicitar captura facial
+            Alert.alert(
+              'Captura Facial Obrigatória',
+              'Para sua segurança, precisamos confirmar sua identidade através de uma foto.',
+              [
+                {
+                  text: 'Cancelar',
+                  style: 'cancel',
+                },
+                {
+                  text: 'Continuar',
+                  onPress: () => setShowFacialCapture(true),
+                },
+              ]
+            );
+          },
         },
       ]
     );
@@ -184,6 +217,66 @@ export default function RequestScreen() {
 
       // 3. Salvar captura facial vinculada à solicitação
       await saveFacialCapture(imageUrl, solicitacaoData.id);
+
+      // 4. Criar empréstimo no banco de dados da empresa
+      // Obter empresa do usuário
+      const userCompany = user.company || 'franca'; // Padrão: franca se não tiver
+      
+      // Obter instância do Supabase da empresa
+      const companySupabase = getCompanySupabase(userCompany);
+      
+      if (!companySupabase) {
+        console.error('Error: Company Supabase not found for:', userCompany);
+        // Não interrompe o fluxo, apenas loga o erro
+      } else {
+        // Buscar cliente no banco da empresa pelo CPF
+        const { data: client, error: clientError } = await companySupabase
+          .from('clients')
+          .select('id')
+          .eq('cpf', user.cpf)
+          .single();
+
+        if (clientError || !client) {
+          console.error('Error finding client in company database:', clientError);
+          // Não interrompe o fluxo, apenas loga o erro
+        } else {
+          // Calcular campos do empréstimo
+          const interestRate = 30.00; // Taxa de juros padrão: 30%
+          const loanDate = new Date();
+          const dueDate = new Date(loanDate);
+          // Adicionar 1 mês à data de criação (ex: 06/02/2026 -> 06/03/2026)
+          dueDate.setMonth(dueDate.getMonth() + 1);
+          // Calcular term_days baseado na diferença real entre as datas
+          const termDays = Math.ceil((dueDate - loanDate) / (1000 * 60 * 60 * 24));
+
+          // Criar empréstimo no banco da empresa
+          // NOTA: total_amount é uma coluna gerada (calculada automaticamente pelo banco)
+          // O banco calcula: total_amount = amount + (amount * interest_rate / 100)
+          const { error: loanError } = await companySupabase
+            .from('loans')
+            .insert([
+              {
+                client_id: client.id,
+                amount: valorFloat.toString(),
+                interest_rate: interestRate.toString(),
+                loan_date: loanDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
+                due_date: dueDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
+                status: 'pending',
+                // total_amount não é inserido - é calculado automaticamente pelo banco
+                created_by: client.id, // Usar client.id como created_by
+                original_amount: valorFloat.toString(),
+                due_date_manually_changed: false,
+                term_days: termDays,
+              },
+            ]);
+
+          if (loanError) {
+            console.error('Error creating loan in company database:', loanError);
+            // Não interrompe o fluxo, apenas loga o erro
+            // A solicitação já foi criada com sucesso
+          }
+        }
+      }
 
       Alert.alert('Sucesso!', 'Solicitação enviada com sucesso');
       setValor('');
