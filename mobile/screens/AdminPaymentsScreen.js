@@ -13,7 +13,7 @@ import {
   Linking,
 } from 'react-native';
 import { ArrowLeft, Plus, CheckCircle, MessageCircle, DollarSign } from 'lucide-react-native';
-import { getSupabase } from '../lib/supabaseMulti';
+import { getSupabase, getCompanySupabase, getCurrentCompany } from '../lib/supabaseMulti';
 
 export default function AdminPaymentsScreen({ navigation }) {
   const [payments, setPayments] = useState([]);
@@ -34,20 +34,47 @@ export default function AdminPaymentsScreen({ navigation }) {
   }, []);
 
   const loadData = async () => {
-    const [paymentsRes, usersRes] = await Promise.all([
-      supabase
-        .from('pagamentos')
-        .select('*, users(nome, cpf, telefone)')
-        .order('data_vencimento', { ascending: true }),
-      supabase
+    try {
+      // Obter empresa atual
+      const companyId = await getCurrentCompany();
+      const companySupabase = getCompanySupabase(companyId);
+      
+      if (!companySupabase) {
+        Alert.alert('Erro', 'Não foi possível conectar ao banco da empresa');
+        return;
+      }
+
+      // Buscar pagamentos do banco da empresa (tabela payments) - apenas os últimos 50
+      const { data: paymentsData, error: paymentsError } = await companySupabase
+        .from('payments')
+        .select('*')
+        .order('payment_date', { ascending: false })
+        .limit(50);
+
+      if (paymentsError) {
+        console.error('Erro ao carregar pagamentos:', paymentsError);
+        Alert.alert('Erro', 'Erro ao carregar pagamentos: ' + paymentsError.message);
+        setPayments([]);
+        return;
+      }
+
+      console.log('Pagamentos carregados (admin mobile):', paymentsData?.length || 0, 'registros');
+
+      // Usar os pagamentos diretamente sem adicionar nomes de admins
+      setPayments(paymentsData || []);
+
+      // Buscar usuários do banco principal para o modal (se necessário)
+      const { data: usersData } = await supabase
         .from('users')
         .select('*')
         .eq('status', 'aprovado')
-        .order('nome', { ascending: true }),
-    ]);
-
-    setPayments(paymentsRes.data || []);
-    setUsers(usersRes.data || []);
+        .order('nome', { ascending: true });
+      
+      setUsers(usersData || []);
+    } catch (err) {
+      console.error('Erro inesperado ao carregar dados:', err);
+      Alert.alert('Erro', 'Erro ao carregar dados');
+    }
   };
 
   const onRefresh = async () => {
@@ -81,78 +108,19 @@ export default function AdminPaymentsScreen({ navigation }) {
     }
   };
 
-  const markAsPaid = async (paymentId) => {
-    const { error } = await supabase
-      .from('pagamentos')
-      .update({
-        status: 'pago',
-        data_pagamento: new Date().toISOString(),
-      })
-      .eq('id', paymentId);
-
-    if (!error) {
-      await loadData();
-      Alert.alert('Sucesso', 'Pagamento marcado como pago!');
-    } else {
-      Alert.alert('Erro', 'Erro ao atualizar pagamento');
-    }
-  };
-
-  const sendPaymentWhatsApp = (payment) => {
-    if (!payment.users.telefone) {
-      Alert.alert('Erro', 'Cliente não possui número de telefone cadastrado');
-      return;
-    }
-
-    const phone = payment.users.telefone.replace(/\D/g, '');
-    const valorFormatado = parseFloat(payment.valor.toString()).toFixed(2).replace('.', ',');
-    const dataVencimento = new Date(payment.data_vencimento).toLocaleDateString('pt-BR');
-    
-    let message = `Olá ${payment.users.nome}! 👋\n\n`;
-    message += `Este é um lembrete de pagamento pendente:\n\n`;
-    message += `💰 *Valor:* R$ ${valorFormatado}\n`;
-    message += `📅 *Vencimento:* ${dataVencimento}\n\n`;
-    message += `Por favor, realize o pagamento até a data de vencimento.\n`;
-    message += `\nEm caso de dúvidas, entre em contato conosco! 📱`;
-
-    const whatsappUrl = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
-    Linking.openURL(whatsappUrl);
-  };
-
-  const getStatusBadge = (status) => {
-    const colors = {
-      pendente: { bg: '#FEF3C7', text: '#92400E' },
-      pago: { bg: '#D1FAE5', text: '#065F46' },
-      atrasado: { bg: '#FEE2E2', text: '#991B1B' },
-      cancelado: { bg: '#F3F4F6', text: '#6B7280' },
-    };
-
-    const labels = {
-      pendente: 'Pendente',
-      pago: 'Pago',
-      atrasado: 'Atrasado',
-      cancelado: 'Cancelado',
-    };
-
-    const style = colors[status] || colors.pendente;
-
-    return (
-      <View style={[styles.statusBadge, { backgroundColor: style.bg }]}>
-        <Text style={[styles.statusText, { color: style.text }]}>
-          {labels[status] || status}
-        </Text>
-      </View>
-    );
-  };
 
   const stats = {
-    total: payments.reduce((acc, p) => acc + parseFloat(p.valor.toString()), 0),
-    pendente: payments
-      .filter((p) => p.status === 'pendente' || p.status === 'atrasado')
-      .reduce((acc, p) => acc + parseFloat(p.valor.toString()), 0),
-    pago: payments
-      .filter((p) => p.status === 'pago')
-      .reduce((acc, p) => acc + parseFloat(p.valor.toString()), 0),
+    total: payments.reduce((acc, p) => {
+      const amount = parseFloat(p?.amount || 0);
+      return isNaN(amount) ? acc : acc + amount;
+    }, 0),
+    totalWithFine: payments.reduce((acc, p) => {
+      const amount = parseFloat(p?.amount || 0);
+      const fine = parseFloat(p?.fine_amount || 0);
+      const total = (isNaN(amount) ? 0 : amount) + (isNaN(fine) ? 0 : fine);
+      return acc + total;
+    }, 0),
+    count: payments?.length || 0,
   };
 
   return (
@@ -170,20 +138,20 @@ export default function AdminPaymentsScreen({ navigation }) {
       {/* Stats */}
       <View style={styles.statsRow}>
         <View style={styles.miniStat}>
-          <Text style={styles.miniStatValue}>R$ {stats.total.toFixed(2)}</Text>
-          <Text style={styles.miniStatLabel}>Total</Text>
+          <Text style={styles.miniStatValue}>{stats.count}</Text>
+          <Text style={styles.miniStatLabel}>Total de Pagamentos</Text>
         </View>
         <View style={styles.miniStat}>
-          <Text style={[styles.miniStatValue, { color: '#F59E0B' }]}>
-            R$ {stats.pendente.toFixed(2)}
+          <Text style={[styles.miniStatValue, { color: '#3B82F6' }]}>
+            R$ {stats.total.toFixed(2)}
           </Text>
-          <Text style={styles.miniStatLabel}>Pendente</Text>
+          <Text style={styles.miniStatLabel}>Valor Total</Text>
         </View>
         <View style={styles.miniStat}>
           <Text style={[styles.miniStatValue, { color: '#10B981' }]}>
-            R$ {stats.pago.toFixed(2)}
+            R$ {stats.totalWithFine.toFixed(2)}
           </Text>
-          <Text style={styles.miniStatLabel}>Recebido</Text>
+          <Text style={styles.miniStatLabel}>Com Multas</Text>
         </View>
       </View>
 
@@ -194,54 +162,57 @@ export default function AdminPaymentsScreen({ navigation }) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {payments.map((payment) => (
-          <View key={payment.id} style={styles.paymentCard}>
-            <View style={styles.paymentHeader}>
-              <View style={styles.paymentInfo}>
-                <Text style={styles.clientName}>{payment.users.nome}</Text>
-                <Text style={styles.clientCpf}>CPF: {payment.users.cpf}</Text>
-                <Text style={styles.dueDate}>
-                  Vencimento: {new Date(payment.data_vencimento).toLocaleDateString('pt-BR')}
-                </Text>
-                {payment.status === 'pago' && payment.data_pagamento && (
-                  <Text style={styles.paidDate}>
-                    Pago em: {new Date(payment.data_pagamento).toLocaleDateString('pt-BR')}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.valueContainer}>
-                <DollarSign size={20} color="#3B82F6" />
-                <Text style={styles.valueText}>
-                  R$ {parseFloat(payment.valor).toFixed(2)}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.cardFooter}>
-              {getStatusBadge(payment.status)}
-              
-              {payment.status === 'pendente' && (
-                <View style={styles.actions}>
-                  {payment.users.telefone && (
-                    <TouchableOpacity
-                      style={styles.whatsappButton}
-                      onPress={() => sendPaymentWhatsApp(payment)}
-                    >
-                      <MessageCircle size={16} color="#10B981" />
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity
-                    style={styles.paidButton}
-                    onPress={() => markAsPaid(payment.id)}
-                  >
-                    <CheckCircle size={16} color="#FFFFFF" />
-                    <Text style={styles.paidButtonText}>Marcar como Pago</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
+        {payments.length === 0 ? (
+          <View style={styles.paymentCard}>
+            <Text style={styles.clientName}>Nenhum pagamento encontrado</Text>
           </View>
-        ))}
+        ) : (
+          payments.map((payment) => (
+            <View key={payment.id} style={styles.paymentCard}>
+              <View style={styles.paymentHeader}>
+                <View style={styles.paymentInfo}>
+                  {payment.loan_id && (
+                    <Text style={styles.clientCpf}>Empréstimo: {String(payment.loan_id).substring(0, 8)}...</Text>
+                  )}
+                <Text style={styles.dueDate}>
+                  Data do Pagamento: {payment.payment_date ? String(new Date(payment.payment_date).toLocaleDateString('pt-BR')) : 'N/A'}
+                </Text>
+                  {payment.payment_type && (
+                    <Text style={styles.paidDate}>
+                      Tipo: {String(payment.payment_type).toUpperCase()}
+                    </Text>
+                  )}
+                  {payment.notes && String(payment.notes).trim() && (
+                    <Text style={styles.paidDate}>
+                      Observações: {String(payment.notes)}
+                    </Text>
+                  )}
+                  {payment?.fine_amount && parseFloat(payment.fine_amount) > 0 && (
+                    <Text style={[styles.paidDate, { color: '#EF4444' }]}>
+                      Multa: R$ {String(parseFloat(payment.fine_amount).toFixed(2))}
+                    </Text>
+                  )}
+                </View>
+                <View style={styles.valueContainer}>
+                  <DollarSign size={20} color="#3B82F6" />
+                  <Text style={styles.valueText}>
+                    R$ {payment?.amount ? String(parseFloat(payment.amount).toFixed(2)) : '0.00'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.cardFooter}>
+                <Text style={styles.createdDate}>
+                  Criado em: {payment.created_at ? String(new Date(payment.created_at).toLocaleDateString('pt-BR')) : 'N/A'} às{' '}
+                  {payment.created_at ? String(new Date(payment.created_at).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })) : 'N/A'}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
       </ScrollView>
 
       {/* New Payment Modal */}
@@ -275,7 +246,7 @@ export default function AdminPaymentsScreen({ navigation }) {
                       onPress={() => setFormData({ ...formData, id_user: user.id })}
                     >
                       <Text style={styles.userOptionText}>
-                        {user.nome} - {user.cpf}
+                        {user.nome || 'Sem nome'} - {user.cpf || 'Sem CPF'}
                       </Text>
                     </TouchableOpacity>
                   ))}
@@ -411,6 +382,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#10B981',
     marginTop: 2,
+  },
+  createdDate: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 8,
   },
   valueContainer: {
     alignItems: 'center',

@@ -14,6 +14,7 @@ import {
   X,
   Wallet,
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function DashboardLayout({
   children,
@@ -22,6 +23,7 @@ export default function DashboardLayout({
 }) {
   const [admin, setAdmin] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingWithdrawalsCount, setPendingWithdrawalsCount] = useState(0);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -34,6 +36,37 @@ export default function DashboardLayout({
     }
   }, [router]);
 
+  useEffect(() => {
+    // Carregar contagem de saques pendentes
+    const loadPendingWithdrawals = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('withdrawal_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pendente');
+        
+        if (error) {
+          console.error('Error loading pending withdrawals:', error);
+          setPendingWithdrawalsCount(0);
+        } else {
+          setPendingWithdrawalsCount(count || 0);
+        }
+      } catch (err) {
+        console.error('Unexpected error loading withdrawals:', err);
+        setPendingWithdrawalsCount(0);
+      }
+    };
+
+    if (admin) {
+      loadPendingWithdrawals();
+      
+      // Atualizar a cada 30 segundos
+      const interval = setInterval(loadPendingWithdrawals, 30000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [admin]);
+
   const handleLogout = () => {
     localStorage.removeItem('admin');
     router.push('/');
@@ -42,8 +75,8 @@ export default function DashboardLayout({
   const menuItems = [
     { href: '/dashboard', icon: Users, label: 'Cadastros' },
     { href: '/dashboard/documents', icon: FileText, label: 'Documentos' },
-    { href: '/dashboard/requests', icon: DollarSign, label: 'Solicitações' },
     { href: '/dashboard/withdrawals', icon: Wallet, label: 'Saques' },
+    { href: '/dashboard/requests', icon: DollarSign, label: 'Solicitações' },
     { href: '/dashboard/payments', icon: CreditCard, label: 'Pagamentos' },
     { href: '/dashboard/charges', icon: CreditCard, label: 'Cobranças' },
     { href: '/dashboard/chat', icon: MessageCircle, label: 'Chat' },
@@ -92,13 +125,15 @@ export default function DashboardLayout({
             <nav className="flex-1 p-4 space-y-2">
               {menuItems.map((item) => {
                 const isActive = pathname === item.href;
+                const showBadge = item.href === '/dashboard/withdrawals' && pendingWithdrawalsCount > 0;
+                const IconComponent = item.icon;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={`
-                      flex items-center gap-3 px-4 py-3 rounded-xl transition-colors
+                      flex items-center gap-3 px-4 py-3 rounded-xl transition-colors relative
                       ${
                         isActive
                           ? 'bg-blue-50 text-blue-600 font-semibold'
@@ -106,8 +141,13 @@ export default function DashboardLayout({
                       }
                     `}
                   >
-                    <item.icon size={20} />
+                    <IconComponent size={20} />
                     <span>{item.label}</span>
+                    {showBadge && (
+                      <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        {pendingWithdrawalsCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LogOut, Users, FileText, DollarSign, Clock, CheckCircle } from 'lucide-react-native';
+import { LogOut, Users, FileText, DollarSign, Clock, CheckCircle, Wallet } from 'lucide-react-native';
 import { getSupabase } from '../lib/supabaseMulti';
 
 export default function AdminDashboardScreen({ navigation }) {
@@ -63,6 +63,12 @@ export default function AdminDashboardScreen({ navigation }) {
       .from('documents')
       .select('*');
 
+    // Carregar saques pendentes
+    const { data: withdrawals } = await supabase
+      .from('withdrawal_requests')
+      .select('*')
+      .eq('status', 'pendente');
+
     setStats({
       totalUsers: users?.length || 0,
       pendingUsers: users?.filter(u => u.status === 'pendente').length || 0,
@@ -71,6 +77,7 @@ export default function AdminDashboardScreen({ navigation }) {
       totalPayments: payments?.length || 0,
       pendingPayments: payments?.filter(p => p.status === 'pendente').length || 0,
       pendingDocuments: documents?.filter(d => d.status_documentos === 'pendente').length || 0,
+      pendingWithdrawals: withdrawals?.length || 0,
     });
   };
 
@@ -202,6 +209,19 @@ export default function AdminDashboardScreen({ navigation }) {
             {stats.pendingDocuments > 0 && (
               <View style={styles.actionBadge}>
                 <Text style={styles.actionBadgeText}>{stats.pendingDocuments} pendentes</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => navigation.navigate('AdminWithdrawals')}
+          >
+            <Wallet size={20} color="#F59E0B" />
+            <Text style={styles.actionButtonText}>Saques</Text>
+            {stats.pendingWithdrawals > 0 && (
+              <View style={styles.actionBadge}>
+                <Text style={styles.actionBadgeText}>{stats.pendingWithdrawals} pendentes</Text>
               </View>
             )}
           </TouchableOpacity>

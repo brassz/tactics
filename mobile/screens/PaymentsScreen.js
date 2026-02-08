@@ -41,25 +41,53 @@ export default function PaymentsScreen() {
   };
 
   const loadPagamentos = async (userId) => {
-    const { data } = await supabase
-      .from('pagamentos')
-      .select('*')
-      .eq('id_user', userId)
-      .order('data_vencimento', { ascending: true });
+    try {
+      console.log('Carregando cobranças (pagamentos) para usuário:', userId);
+      // Carregar cobranças da tabela cobrancas ao invés de pagamentos
+      const { data, error } = await supabase
+        .from('cobrancas')
+        .select('*')
+        .eq('id_user', userId)
+        .order('data_vencimento', { ascending: true });
 
-    // Atualizar status de atrasados
-    const updated = data?.map((p) => {
-      if (p.status === 'pendente') {
-        const hoje = new Date();
-        const vencimento = new Date(p.data_vencimento);
-        if (vencimento < hoje) {
-          return { ...p, status: 'atrasado' };
-        }
+      if (error) {
+        console.error('Erro ao carregar cobranças:', error);
+        Alert.alert('Erro', 'Erro ao carregar pagamentos: ' + error.message);
+        setPagamentos([]);
+        return;
       }
-      return p;
-    });
 
-    setPagamentos(updated || []);
+      console.log('Cobranças encontradas:', data?.length || 0, 'registros');
+
+      // Converter cobranças para formato de pagamento e atualizar status de atrasados
+      const updated = data?.map((cobranca) => {
+        const pagamento = {
+          id: cobranca.id,
+          id_user: cobranca.id_user,
+          valor: cobranca.valor,
+          data_vencimento: cobranca.data_vencimento,
+          data_pagamento: cobranca.status === 'pago' ? cobranca.updated_at : null,
+          status: cobranca.status,
+          descricao: cobranca.descricao,
+        };
+
+        // Atualizar status de atrasados
+        if (pagamento.status === 'pendente') {
+          const hoje = new Date();
+          const vencimento = new Date(pagamento.data_vencimento);
+          if (vencimento < hoje) {
+            pagamento.status = 'atrasado';
+          }
+        }
+
+        return pagamento;
+      });
+
+      setPagamentos(updated || []);
+    } catch (err) {
+      console.error('Erro inesperado ao carregar cobranças:', err);
+      setPagamentos([]);
+    }
   };
 
   const onRefresh = async () => {
@@ -158,7 +186,7 @@ export default function PaymentsScreen() {
     }
   };
 
-  const saveFacialCapture = async (imageUrl, pagamentoId) => {
+  const saveFacialCapture = async (imageUrl, cobrancaId) => {
     try {
       const { error } = await supabase
         .from('capturas_faciais')
@@ -167,10 +195,10 @@ export default function PaymentsScreen() {
             id_user: user.id,
             tipo_operacao: 'pagamento',
             imagem_url: imageUrl,
-            id_pagamento: pagamentoId,
+            id_pagamento: cobrancaId, // Usando o ID da cobrança
             metadata: {
               timestamp: new Date().toISOString(),
-              tipo_pagamento: 'pagamento_parcela',
+              tipo_pagamento: 'pagamento_cobranca',
             },
           },
         ]);
@@ -218,18 +246,18 @@ export default function PaymentsScreen() {
       // 1. Fazer upload da imagem facial
       const imageUrl = await uploadFacialImage(imageUri);
 
-      // 2. Atualizar status do pagamento
+      // 2. Atualizar status da cobrança (que aparece como pagamento para o cliente)
       const { error: paymentError } = await supabase
-        .from('pagamentos')
+        .from('cobrancas')
         .update({
           status: 'pago',
-          data_pagamento: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', selectedPayment.id);
 
       if (paymentError) throw paymentError;
 
-      // 3. Salvar captura facial vinculada ao pagamento
+      // 3. Salvar captura facial vinculada à cobrança
       await saveFacialCapture(imageUrl, selectedPayment.id);
 
       Alert.alert('Sucesso!', 'Pagamento realizado com sucesso');
@@ -295,7 +323,7 @@ export default function PaymentsScreen() {
                     </Text>
                     <Text style={styles.paymentDate}>
                       Vencimento:{' '}
-                      {new Date(item.data_vencimento).toLocaleDateString('pt-BR')}
+                      {formatDate(item.data_vencimento)}
                     </Text>
                   </View>
                 </View>
@@ -317,7 +345,7 @@ export default function PaymentsScreen() {
                 {item.data_pagamento && (
                   <Text style={styles.paymentDatePaid}>
                     Pago em:{' '}
-                    {new Date(item.data_pagamento).toLocaleDateString('pt-BR')}
+                    {formatDate(item.data_pagamento)}
                   </Text>
                 )}
                 {(item.status === 'pendente' || item.status === 'atrasado') && (

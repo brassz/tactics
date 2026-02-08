@@ -45,21 +45,33 @@ export default function PaymentsPage() {
   }, []);
 
   const loadData = async () => {
-    const [paymentsRes, usersRes] = await Promise.all([
-      supabase
-        .from('pagamentos')
-        .select('*, users(nome, cpf, telefone)')
-        .order('data_vencimento', { ascending: true }),
-      supabase
-        .from('users')
-        .select('*')
-        .eq('status', 'aprovado')
-        .order('nome', { ascending: true }),
-    ]);
+    try {
+      const [paymentsRes, usersRes] = await Promise.all([
+        supabase
+          .from('pagamentos')
+          .select('*, users(nome, cpf, telefone)')
+          .order('data_vencimento', { ascending: true }),
+        supabase
+          .from('users')
+          .select('*')
+          .eq('status', 'aprovado')
+          .order('nome', { ascending: true }),
+      ]);
 
-    setPayments(paymentsRes.data || []);
-    setUsers(usersRes.data || []);
-    setLoading(false);
+      if (paymentsRes.error) {
+        console.error('Erro ao carregar pagamentos:', paymentsRes.error);
+        alert('Erro ao carregar pagamentos: ' + paymentsRes.error.message);
+      }
+
+      console.log('Pagamentos carregados:', paymentsRes.data?.length || 0, 'registros');
+      setPayments(paymentsRes.data || []);
+      setUsers(usersRes.data || []);
+    } catch (err) {
+      console.error('Erro inesperado ao carregar dados:', err);
+      alert('Erro ao carregar dados');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const sendPaymentWhatsApp = (payment: Payment) => {

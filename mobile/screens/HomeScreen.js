@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LogOut, User, FileText, DollarSign, Clock, Wallet } from 'lucide-react-native';
+import { LogOut, User, FileText, DollarSign, Clock, Wallet, CreditCard } from 'lucide-react-native';
 import { getSupabase } from '../lib/supabaseMulti';
 
 export default function HomeScreen({ navigation }) {
@@ -143,6 +143,13 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    // Adiciona meio-dia para evitar problemas de fuso horário
+    const date = new Date(dateString + 'T12:00:00');
+    return date.toLocaleDateString('pt-BR');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -225,7 +232,7 @@ export default function HomeScreen({ navigation }) {
               </Text>
               <Text style={styles.paymentDate}>
                 Vencimento:{' '}
-                {new Date(stats.proxPagamento.data_vencimento).toLocaleDateString('pt-BR')}
+                {formatDate(stats.proxPagamento.data_vencimento)}
               </Text>
             </View>
           </View>
@@ -254,10 +261,10 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => navigation.navigate('Payments')}
+            onPress={() => navigation.navigate('Loans')}
           >
-            <FileText size={20} color="#3B82F6" />
-            <Text style={styles.actionButtonText}>Ver Pagamentos</Text>
+            <CreditCard size={20} color="#3B82F6" />
+            <Text style={styles.actionButtonText}>Empréstimos</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

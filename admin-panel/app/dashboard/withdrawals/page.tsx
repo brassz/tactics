@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Wallet, CheckCircle, CreditCard, MessageCircle, Send } from 'lucide-react';
+import { Wallet, CheckCircle, CreditCard, MessageCircle, Send, Copy, Check } from 'lucide-react';
 
 interface WithdrawalRequest {
   id: string;
@@ -14,12 +14,18 @@ interface WithdrawalRequest {
   status: string;
   data_pagamento: string | null;
   created_at: string;
-  solicitacoes_valores: {
+  solicitacoes_valores?: {
     valor: number;
-    users: {
+    id_user?: string;
+    users?: {
       nome: string;
       telefone: string | null;
     };
+  };
+  users?: {
+    nome: string;
+    telefone?: string | null;
+    phone?: string | null;
   };
 }
 
@@ -28,55 +34,126 @@ export default function WithdrawalsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<WithdrawalRequest | null>(null);
   const [showChargeModal, setShowChargeModal] = useState(false);
-  const [filter, setFilter] = useState<string>('pendente');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [copiedPix, setCopiedPix] = useState<string | null>(null);
 
   useEffect(() => {
     loadWithdrawals();
   }, []);
 
   const loadWithdrawals = async () => {
-    const { data, error } = await supabase
-      .from('withdrawal_requests')
-      .select(`
-        *,
-        solicitacoes_valores (
-          valor,
-          users (
-            nome,
-            telefone
-          )
-        )
-      `)
-      .order('created_at', { ascending: false });
+    try {
+      setLoading(true);
+      // Primeiro buscar os saques
+      const { data: withdrawalsData, error: withdrawalsError } = await supabase
+        .from('withdrawal_requests')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error loading withdrawals:', error);
+      if (withdrawalsError) {
+        console.error('Error loading withdrawals:', withdrawalsError);
+        alert('Erro ao carregar saques: ' + withdrawalsError.message);
+        setWithdrawals([]);
+        return;
+      }
+
+      if (!withdrawalsData || withdrawalsData.length === 0) {
+        setWithdrawals([]);
+        return;
+      }
+
+      // Buscar dados relacionados para cada saque
+      const withdrawalsWithData = await Promise.all(
+        withdrawalsData.map(async (withdrawal) => {
+          // Buscar dados da solicitação
+          const { data: solicitacaoData } = await supabase
+            .from('solicitacoes_valores')
+            .select('valor, id_user')
+            .eq('id', withdrawal.id_solicitacao)
+            .single();
+
+          // Buscar dados do usuário
+          const { data: userData } = await supabase
+            .from('users')
+            .select('nome, telefone, phone')
+            .eq('id', withdrawal.id_user)
+            .single();
+
+          return {
+            ...withdrawal,
+            solicitacoes_valores: solicitacaoData || { valor: 0, id_user: withdrawal.id_user },
+            users: userData ? {
+              nome: userData.nome || '',
+              telefone: userData.telefone || userData.phone || null,
+            } : { nome: '', telefone: null },
+          };
+        })
+      );
+
+      setWithdrawals(withdrawalsWithData);
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      alert('Erro inesperado ao carregar saques');
+      setWithdrawals([]);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setWithdrawals(data || []);
-    setLoading(false);
+  const copyPixKey = async (pixKey: string, withdrawalId: string) => {
+    try {
+      await navigator.clipboard.writeText(pixKey);
+      setCopiedPix(withdrawalId);
+      setTimeout(() => setCopiedPix(null), 2000);
+    } catch (err) {
+      // Fallback para navegadores mais antigos
+      const textArea = document.createElement('textarea');
+      textArea.value = pixKey;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedPix(withdrawalId);
+      setTimeout(() => setCopiedPix(null), 2000);
+    }
+  };
+
+  const openPaymentModal = (withdrawal: WithdrawalRequest) => {
+    setSelectedWithdrawal(withdrawal);
+    setShowPaymentModal(true);
   };
 
   const markAsPaid = async (withdrawalId: string, withdrawal: WithdrawalRequest) => {
-    const { error } = await supabase
-      .from('withdrawal_requests')
-      .update({
-        status: 'pago',
-        data_pagamento: new Date().toISOString(),
-      })
-      .eq('id', withdrawalId);
+    try {
+      const { error } = await supabase
+        .from('withdrawal_requests')
+        .update({
+          status: 'pago',
+          data_pagamento: new Date().toISOString(),
+        })
+        .eq('id', withdrawalId);
 
-    if (!error) {
-      loadWithdrawals();
-      // Perguntar se deseja enviar colinha
-      if (confirm('Pagamento marcado como realizado! Deseja enviar a colinha de pagamento via WhatsApp?')) {
-        sendPaymentReceipt(withdrawal);
+      if (error) {
+        console.error('Error marking as paid:', error);
+        alert('Erro ao marcar como pago: ' + error.message);
+        return;
       }
+
+      setShowPaymentModal(false);
+      await loadWithdrawals();
+      
+      // Enviar comprovante automaticamente após um pequeno delay
+      setTimeout(() => {
+        sendPaymentReceipt(withdrawal);
+      }, 1000);
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      alert('Erro inesperado ao marcar como pago');
     }
   };
 
   const createCharge = async (withdrawal: WithdrawalRequest, sendColinha: boolean = false) => {
-    const valor = withdrawal.solicitacoes_valores.valor;
+    const valor = withdrawal.solicitacoes_valores?.valor || 0;
     // Taxa de juros: 40% para valores abaixo de R$ 1.000,00 | 30% para R$ 1.000,00 ou mais
     const interestRate = valor < 1000 ? 40.00 : 30.00;
     const totalAmount = valor + (valor * interestRate / 100);
@@ -84,64 +161,143 @@ export default function WithdrawalsPage() {
     // Calcular data de vencimento (30 dias = 1 mês)
     const dueDate = new Date();
     dueDate.setMonth(dueDate.getMonth() + 1);
+    const dueDateString = dueDate.toISOString().split('T')[0];
 
-    const { error } = await supabase.from('cobrancas').insert([
+    // Criar cobrança
+    const { error: chargeError } = await supabase.from('cobrancas').insert([
       {
         id_user: withdrawal.id_user,
         valor: totalAmount,
         descricao: `Cobrança do empréstimo - Valor original: R$ ${valor.toFixed(2)} + Juros (${interestRate}%): R$ ${(totalAmount - valor).toFixed(2)}`,
-        data_vencimento: dueDate.toISOString().split('T')[0],
+        data_vencimento: dueDateString,
         status: 'pendente',
       },
     ]);
 
-    if (!error) {
-      setShowChargeModal(false);
-      setSelectedWithdrawal(null);
-      alert('Cobrança criada com sucesso!');
-      loadWithdrawals();
-      
-      // Se solicitado, enviar colinha após criar cobrança
-      if (sendColinha) {
-        sendReminder(withdrawal);
-      }
-    } else {
-      alert('Erro ao criar cobrança');
+    if (chargeError) {
+      alert('Erro ao criar cobrança: ' + chargeError.message);
+      return;
     }
-  };
 
-  const sendPaymentReceipt = (withdrawal: WithdrawalRequest) => {
-    const valor = withdrawal.solicitacoes_valores.valor;
-    // Taxa de juros: 40% para valores abaixo de R$ 1.000,00 | 30% para R$ 1.000,00 ou mais
-    const interestRate = valor < 1000 ? 40.00 : 30.00;
-    const totalAmount = valor + (valor * interestRate / 100);
-    const dueDate = new Date();
-    dueDate.setMonth(dueDate.getMonth() + 1);
+    // Apenas criar cobrança - não criar pagamento na tabela pagamentos
+
+    setShowChargeModal(false);
+    setSelectedWithdrawal(null);
+    alert('Cobrança criada com sucesso!');
+    loadWithdrawals();
     
-    const message = `✅ *Pagamento Realizado!*\n\n` +
-      `Olá ${withdrawal.nome_completo}!\n\n` +
-      `Seu saque foi processado com sucesso.\n\n` +
-      `💰 *Valor recebido:* R$ ${valor.toFixed(2)}\n` +
-      `📅 *Data do pagamento:* ${new Date().toLocaleDateString('pt-BR')}\n\n` +
-      `📋 *Próximo vencimento:*\n` +
-      `Valor do empréstimo: R$ ${valor.toFixed(2)}\n` +
-      `Juros (${interestRate}%): R$ ${(totalAmount - valor).toFixed(2)}\n` +
-      `Valor total: R$ ${totalAmount.toFixed(2)}\n` +
-      `Vencimento: ${dueDate.toLocaleDateString('pt-BR')}\n\n` +
-      `💡 *Lembrete:* Em ${dueDate.toLocaleDateString('pt-BR')} você terá o pagamento integral do valor ou do juros para renovação.\n\n` +
-      `Obrigado por escolher nossos serviços! 🎉`;
-
-    const phone = withdrawal.solicitacoes_valores.users.telefone;
-    if (phone) {
-      const whatsappUrl = `https://wa.me/55${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-      window.open(whatsappUrl, '_blank');
-    } else {
-      alert('Telefone do cliente não cadastrado');
+    // Se solicitado, enviar colinha após criar cobrança
+    if (sendColinha) {
+      sendReminder(withdrawal);
     }
   };
 
-  const sendReminder = (withdrawal: WithdrawalRequest) => {
-    const valor = withdrawal.solicitacoes_valores.valor;
+  const sendPaymentReceipt = async (withdrawal: WithdrawalRequest) => {
+    try {
+      // Buscar telefone do usuário se não estiver disponível
+      let phone = null;
+      
+      // Tentar primeiro nos dados já carregados
+      if (withdrawal.users?.telefone) {
+        phone = withdrawal.users.telefone;
+      } else if (withdrawal.users?.phone) {
+        phone = withdrawal.users.phone;
+      } else if (withdrawal.solicitacoes_valores?.users?.telefone) {
+        phone = withdrawal.solicitacoes_valores.users.telefone;
+      } else if (withdrawal.solicitacoes_valores?.users?.phone) {
+        phone = withdrawal.solicitacoes_valores.users.phone;
+      }
+      
+      // Se ainda não encontrou, buscar diretamente do banco
+      if (!phone) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('telefone, phone')
+          .eq('id', withdrawal.id_user)
+          .single();
+        
+        if (userError) {
+          console.error('Error loading user phone:', userError);
+        } else {
+          phone = userData?.telefone || userData?.phone || null;
+        }
+      }
+
+      if (!phone || phone.trim() === '') {
+        alert('Telefone do cliente não cadastrado. Não foi possível enviar o comprovante.\n\nPor favor, cadastre o telefone do cliente antes de enviar o comprovante.');
+        return;
+      }
+
+      const valor = withdrawal.solicitacoes_valores?.valor || 0;
+      // Taxa de juros: 40% para valores abaixo de R$ 1.000,00 | 30% para R$ 1.000,00 ou mais
+      const interestRate = valor < 1000 ? 40.00 : 30.00;
+      const totalAmount = valor + (valor * interestRate / 100);
+      const dueDate = new Date();
+      dueDate.setMonth(dueDate.getMonth() + 1);
+      
+      const message = `✅ *Pagamento Realizado com Sucesso!*\n\n` +
+        `Olá ${withdrawal.nome_completo}!\n\n` +
+        `Agradecemos pela confiança em nossos serviços! 🎉\n\n` +
+        `Seu saque foi processado e o pagamento foi realizado com sucesso.\n\n` +
+        `💰 *Valor recebido:* R$ ${valor.toFixed(2).replace('.', ',')}\n` +
+        `📅 *Data do pagamento:* ${new Date().toLocaleDateString('pt-BR')}\n\n` +
+        `📋 *Informações do Vencimento (daqui 30 dias):*\n` +
+        `Valor do empréstimo: R$ ${valor.toFixed(2).replace('.', ',')}\n` +
+        `Juros (${interestRate}%): R$ ${(totalAmount - valor).toFixed(2).replace('.', ',')}\n` +
+        `Valor total: R$ ${totalAmount.toFixed(2).replace('.', ',')}\n` +
+        `Vencimento: ${dueDate.toLocaleDateString('pt-BR')}\n\n` +
+        `💡 *Lembrete Importante:*\n` +
+        `Em ${dueDate.toLocaleDateString('pt-BR')} você terá o pagamento integral do valor ou do juros para renovação.\n\n` +
+        `Por favor, mantenha-se em dia com seus pagamentos para continuar utilizando nossos serviços.\n\n` +
+        `Obrigado por escolher nossos serviços! 🙏\n\n` +
+        `Qualquer dúvida, estamos à disposição! 📱`;
+
+      const cleanPhone = phone.replace(/\D/g, '');
+      const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+    } catch (err) {
+      console.error('Error sending receipt:', err);
+      alert('Erro ao enviar comprovante. Tente novamente.');
+    }
+  };
+
+  const sendReminder = async (withdrawal: WithdrawalRequest) => {
+    try {
+      // Buscar telefone do usuário se não estiver disponível
+      let phone = null;
+      
+      // Tentar primeiro nos dados já carregados
+      if (withdrawal.users?.telefone) {
+        phone = withdrawal.users.telefone;
+      } else if (withdrawal.users?.phone) {
+        phone = withdrawal.users.phone;
+      } else if (withdrawal.solicitacoes_valores?.users?.telefone) {
+        phone = withdrawal.solicitacoes_valores.users.telefone;
+      } else if (withdrawal.solicitacoes_valores?.users?.phone) {
+        phone = withdrawal.solicitacoes_valores.users.phone;
+      }
+      
+      // Se ainda não encontrou, buscar diretamente do banco
+      if (!phone) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('telefone, phone')
+          .eq('id', withdrawal.id_user)
+          .single();
+        
+        if (userError) {
+          console.error('Error loading user phone:', userError);
+        } else {
+          phone = userData?.telefone || userData?.phone || null;
+        }
+      }
+
+      if (!phone || phone.trim() === '') {
+        alert('Telefone do cliente não cadastrado.\n\nPor favor, cadastre o telefone do cliente antes de enviar o lembrete.');
+        return;
+      }
+
+      const valor = withdrawal.solicitacoes_valores?.valor || 0;
     // Taxa de juros: 40% para valores abaixo de R$ 1.000,00 | 30% para R$ 1.000,00 ou mais
     const interestRate = valor < 1000 ? 40.00 : 30.00;
     const totalAmount = valor + (valor * interestRate / 100);
@@ -159,16 +315,16 @@ export default function WithdrawalsPage() {
       `💡 *Importante:* Em ${dueDate.toLocaleDateString('pt-BR')} você terá o pagamento integral do valor ou do juros para renovação.\n\n` +
       `Por favor, mantenha-se em dia com seus pagamentos! 📅`;
 
-    const phone = withdrawal.solicitacoes_valores.users.telefone;
-    if (phone) {
-      const whatsappUrl = `https://wa.me/55${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+      const cleanPhone = phone.replace(/\D/g, '');
+      const whatsappUrl = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
-    } else {
-      alert('Telefone do cliente não cadastrado');
+    } catch (err) {
+      console.error('Error sending reminder:', err);
+      alert('Erro ao enviar lembrete. Tente novamente.');
     }
   };
 
-  const filteredWithdrawals = withdrawals.filter((w) => {
+  const filteredWithdrawals = withdrawals.filter((w: WithdrawalRequest) => {
     if (filter === 'all') return true;
     return w.status === filter;
   });
@@ -189,39 +345,37 @@ export default function WithdrawalsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl p-4 shadow-sm mb-6">
-        <div className="flex gap-2 overflow-x-auto">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
-              filter === 'all'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Todas
-          </button>
-          <button
-            onClick={() => setFilter('pendente')}
-            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
-              filter === 'pendente'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Pendentes
-          </button>
-          <button
-            onClick={() => setFilter('pago')}
-            className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap ${
-              filter === 'pago'
-                ? 'bg-blue-500 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Pagos
-          </button>
-        </div>
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setFilter('all')}
+          className={`px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+            filter === 'all'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Todas
+        </button>
+        <button
+          onClick={() => setFilter('pendente')}
+          className={`px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+            filter === 'pendente'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Pendentes
+        </button>
+        <button
+          onClick={() => setFilter('pago')}
+          className={`px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-colors ${
+            filter === 'pago'
+              ? 'bg-blue-500 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          Pagos
+        </button>
       </div>
 
       {/* Withdrawals List */}
@@ -250,7 +404,23 @@ export default function WithdrawalsPage() {
                     </span>
                   </div>
                   <p className="text-sm text-gray-600">CPF: {withdrawal.cpf}</p>
-                  <p className="text-sm text-gray-600">Chave PIX: {withdrawal.chave_pix}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <p className="text-sm text-gray-600">Chave PIX:</p>
+                    <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
+                      <span className="text-sm font-mono text-gray-900">{withdrawal.chave_pix}</span>
+                      <button
+                        onClick={() => copyPixKey(withdrawal.chave_pix, withdrawal.id)}
+                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        title="Copiar chave PIX"
+                      >
+                        {copiedPix === withdrawal.id ? (
+                          <Check size={16} className="text-green-600" />
+                        ) : (
+                          <Copy size={16} className="text-gray-600" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
                   {withdrawal.data_pagamento && (
                     <p className="text-sm text-green-600 font-medium mt-1">
                       Pago em {new Date(withdrawal.data_pagamento).toLocaleDateString('pt-BR')} às{' '}
@@ -270,20 +440,31 @@ export default function WithdrawalsPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-3xl font-bold text-blue-600">
-                    R$ {parseFloat(withdrawal.solicitacoes_valores.valor.toString()).toFixed(2)}
+                    R$ {withdrawal.solicitacoes_valores?.valor 
+                      ? parseFloat(withdrawal.solicitacoes_valores.valor.toString()).toFixed(2)
+                      : '0.00'}
                   </p>
                 </div>
               </div>
 
             <div className="flex gap-2 flex-wrap">
               {withdrawal.status === 'pendente' && (
-                <button
-                  onClick={() => markAsPaid(withdrawal.id, withdrawal)}
-                  className="flex-1 bg-green-500 text-white py-2 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
-                >
-                  <CheckCircle size={20} />
-                  Marcar como Pago
-                </button>
+                <>
+                  <button
+                    onClick={() => openPaymentModal(withdrawal)}
+                    className="flex-1 bg-blue-500 text-white py-2 rounded-lg font-medium hover:bg-blue-600 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Wallet size={20} />
+                    Realizar Pagamento
+                  </button>
+                  <button
+                    onClick={() => markAsPaid(withdrawal.id, withdrawal)}
+                    className="flex-1 bg-green-500 text-white py-2 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={20} />
+                    Marcar como Pago
+                  </button>
+                </>
               )}
               {withdrawal.status === 'pago' && (
                 <>
@@ -319,6 +500,75 @@ export default function WithdrawalsPage() {
         )}
       </div>
 
+      {/* Payment Modal */}
+      {showPaymentModal && selectedWithdrawal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Realizar Pagamento PIX</h2>
+            <div className="space-y-4 mb-6">
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Cliente</p>
+                <p className="font-semibold text-gray-900 text-lg">{selectedWithdrawal.nome_completo}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 mb-1">Valor a Pagar</p>
+                <p className="font-bold text-blue-600 text-3xl">
+                  R$ {selectedWithdrawal.solicitacoes_valores?.valor
+                    ? parseFloat(selectedWithdrawal.solicitacoes_valores.valor.toString()).toFixed(2).replace('.', ',')
+                    : '0,00'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600 mb-2">Chave PIX</p>
+                <div className="flex items-center gap-2 bg-gray-50 px-4 py-3 rounded-lg border-2 border-blue-200">
+                  <span className="text-base font-mono text-gray-900 flex-1 break-all">
+                    {selectedWithdrawal.chave_pix}
+                  </span>
+                  <button
+                    onClick={() => copyPixKey(selectedWithdrawal.chave_pix, selectedWithdrawal.id)}
+                    className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
+                    title="Copiar chave PIX"
+                  >
+                    {copiedPix === selectedWithdrawal.id ? (
+                      <>
+                        <Check size={18} />
+                        <span className="text-sm">Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={18} />
+                        <span className="text-sm">Copiar</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 Copie a chave PIX acima e realize o pagamento no seu aplicativo bancário
+                </p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => markAsPaid(selectedWithdrawal.id, selectedWithdrawal)}
+                className="w-full bg-green-500 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={20} />
+                Confirmar Pagamento e Enviar Colinha
+              </button>
+              <button
+                onClick={() => {
+                  setShowPaymentModal(false);
+                  setSelectedWithdrawal(null);
+                }}
+                className="w-full bg-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-300 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Charge Modal */}
       {showChargeModal && selectedWithdrawal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -332,7 +582,9 @@ export default function WithdrawalsPage() {
               <div>
                 <p className="text-sm text-gray-600">Valor do Empréstimo</p>
                 <p className="font-medium text-gray-900">
-                  R$ {parseFloat(selectedWithdrawal.solicitacoes_valores.valor.toString()).toFixed(2)}
+                  R$ {selectedWithdrawal.solicitacoes_valores?.valor
+                    ? parseFloat(selectedWithdrawal.solicitacoes_valores.valor.toString()).toFixed(2)
+                    : '0.00'}
                 </p>
               </div>
               <div>
