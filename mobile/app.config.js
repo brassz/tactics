@@ -1,6 +1,6 @@
 module.exports = {
   expo: {
-    name: "Sistema Financeiro",
+    name: "NovixCred",
     slug: "sistema-financeiro-mobile",
     version: "1.0.0",
     orientation: "portrait",

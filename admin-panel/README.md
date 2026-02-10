@@ -1,6 +1,6 @@
-# Sistema Financeiro - Admin Panel
+# NovixCred - Admin Panel
 
-Painel administrativo web para gerenciar o sistema financeiro.
+Painel administrativo web para gerenciar a NovixCred.
 
 ## 🚀 Instalação
 

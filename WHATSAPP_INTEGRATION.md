@@ -72,7 +72,7 @@ O painel administrativo possui integração completa com WhatsApp para comunica�
 ```
 Olá [Nome do Cliente]! 👋
 
-Este é o Sistema Financeiro entrando em contato.
+Aqui é a NovixCred entrando em contato.
 
 Como podemos ajudá-lo hoje?
 ```

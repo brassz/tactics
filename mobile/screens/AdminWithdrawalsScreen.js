@@ -125,9 +125,9 @@ export default function AdminWithdrawalsScreen({ navigation }) {
 
   const createCharge = async (withdrawal, sendColinha = false) => {
     const valor = withdrawal.solicitacoes_valores?.valor || 0;
-    // Taxa de juros: 40% para valores abaixo de R$ 1.000,00 | 30% para R$ 1.000,00 ou mais
-    const interestRate = valor < 1000 ? 40.00 : 30.00;
-    const totalAmount = valor + (valor * interestRate / 100);
+    // Encargos calculados com base no valor solicitado
+    const interestRate = valor < 1000 ? 40.0 : 30.0;
+    const totalAmount = valor + (valor * interestRate) / 100;
     
     // Calcular data de vencimento (30 dias = 1 mês)
     const dueDate = new Date();
@@ -139,7 +139,11 @@ export default function AdminWithdrawalsScreen({ navigation }) {
       {
         id_user: withdrawal.id_user,
         valor: totalAmount,
-        descricao: `Cobrança do empréstimo - Valor original: R$ ${valor.toFixed(2)} + Juros (${interestRate}%): R$ ${(totalAmount - valor).toFixed(2)}`,
+        descricao: `Cobrança do empréstimo - Valor original: R$ ${valor
+          .toFixed(2)
+          .replace('.', ',')} + Encargos: R$ ${(totalAmount - valor)
+          .toFixed(2)
+          .replace('.', ',')}`,
         data_vencimento: dueDateString,
         status: 'pendente',
       },
@@ -196,9 +200,9 @@ export default function AdminWithdrawalsScreen({ navigation }) {
       }
 
       const valor = withdrawal.solicitacoes_valores?.valor || 0;
-      // Taxa de juros: 40% para valores abaixo de R$ 1.000,00 | 30% para R$ 1.000,00 ou mais
-      const interestRate = valor < 1000 ? 40.00 : 30.00;
-      const totalAmount = valor + (valor * interestRate / 100);
+      // Encargos calculados com base no valor solicitado
+      const interestRate = valor < 1000 ? 40.0 : 30.0;
+      const totalAmount = valor + (valor * interestRate) / 100;
       const dueDate = new Date();
       dueDate.setMonth(dueDate.getMonth() + 1);
       
@@ -210,11 +214,13 @@ export default function AdminWithdrawalsScreen({ navigation }) {
         `📅 *Data do pagamento:* ${new Date().toLocaleDateString('pt-BR')}\n\n` +
         `📋 *Informações do Vencimento (daqui 30 dias):*\n` +
         `Valor do empréstimo: R$ ${valor.toFixed(2).replace('.', ',')}\n` +
-        `Juros (${interestRate}%): R$ ${(totalAmount - valor).toFixed(2).replace('.', ',')}\n` +
+        `Encargos: R$ ${(totalAmount - valor).toFixed(2).replace('.', ',')}\n` +
         `Valor total: R$ ${totalAmount.toFixed(2).replace('.', ',')}\n` +
         `Vencimento: ${dueDate.toLocaleDateString('pt-BR')}\n\n` +
         `💡 *Lembrete Importante:*\n` +
-        `Em ${dueDate.toLocaleDateString('pt-BR')} você terá o pagamento integral do valor ou do juros para renovação.\n\n` +
+        `Em ${dueDate.toLocaleDateString(
+          'pt-BR'
+        )} você terá o pagamento integral do valor ou dos encargos para renovação.\n\n` +
         `Por favor, mantenha-se em dia com seus pagamentos para continuar utilizando nossos serviços.\n\n` +
         `Obrigado por escolher nossos serviços! 🙏\n\n` +
         `Qualquer dúvida, estamos à disposição! 📱`;
@@ -261,9 +267,9 @@ export default function AdminWithdrawalsScreen({ navigation }) {
       }
 
       const valor = withdrawal.solicitacoes_valores?.valor || 0;
-      // Taxa de juros: 40% para valores abaixo de R$ 1.000,00 | 30% para R$ 1.000,00 ou mais
-      const interestRate = valor < 1000 ? 40.00 : 30.00;
-      const totalAmount = valor + (valor * interestRate / 100);
+      // Encargos calculados com base no valor solicitado
+      const interestRate = valor < 1000 ? 40.0 : 30.0;
+      const totalAmount = valor + (valor * interestRate) / 100;
       const dueDate = new Date();
       dueDate.setMonth(dueDate.getMonth() + 1);
       
@@ -272,10 +278,12 @@ export default function AdminWithdrawalsScreen({ navigation }) {
         `Lembrete: Você tem um pagamento agendado.\n\n` +
         `💰 *Detalhes do Empréstimo:*\n` +
         `Valor do empréstimo: R$ ${valor.toFixed(2)}\n` +
-        `Juros (${interestRate}%): R$ ${(totalAmount - valor).toFixed(2)}\n` +
+        `Encargos: R$ ${(totalAmount - valor).toFixed(2)}\n` +
         `Valor total: R$ ${totalAmount.toFixed(2)}\n` +
         `Vencimento: ${dueDate.toLocaleDateString('pt-BR')}\n\n` +
-        `💡 *Importante:* Em ${dueDate.toLocaleDateString('pt-BR')} você terá o pagamento integral do valor ou do juros para renovação.\n\n` +
+        `💡 *Importante:* Em ${dueDate.toLocaleDateString(
+          'pt-BR'
+        )} você terá o pagamento integral do valor ou dos encargos para renovação.\n\n` +
         `Por favor, mantenha-se em dia com seus pagamentos! 📅`;
 
       const cleanPhone = phone.replace(/\D/g, '');
@@ -519,18 +527,13 @@ export default function AdminWithdrawalsScreen({ navigation }) {
               </View>
 
               <View style={styles.modalSection}>
-                <Text style={styles.modalLabel}>
-                  Juros ({(() => {
-                    const valor = selectedWithdrawal.solicitacoes_valores?.valor 
-                      ? parseFloat(selectedWithdrawal.solicitacoes_valores.valor.toString())
-                      : 0;
-                    return valor < 1000 ? '40%' : '30%';
-                  })()})
-                </Text>
+                <Text style={styles.modalLabel}>Encargos</Text>
                 <Text style={styles.modalValue}>
                   R$ {selectedWithdrawal.solicitacoes_valores?.valor
                     ? (() => {
-                        const valor = parseFloat(selectedWithdrawal.solicitacoes_valores.valor.toString());
+                        const valor = parseFloat(
+                          selectedWithdrawal.solicitacoes_valores.valor.toString()
+                        );
                         const interestRate = valor < 1000 ? 0.4 : 0.3;
                         return (valor * interestRate).toFixed(2);
                       })()

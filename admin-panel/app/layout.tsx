@@ -5,8 +5,8 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Sistema Financeiro - Admin",
-  description: "Painel administrativo do sistema financeiro",
+  title: "NovixCred - Admin",
+  description: "Painel administrativo da NovixCred",
 };
 
 export default function RootLayout({

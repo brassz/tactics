@@ -63,7 +63,7 @@ export default function LoginPage() {
             Painel Admin
           </h1>
           <p className="text-center text-gray-600 mb-8">
-            Sistema Financeiro
+            NovixCred
           </p>
 
           <form onSubmit={handleLogin} className="space-y-6">

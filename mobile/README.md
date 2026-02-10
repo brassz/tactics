@@ -1,6 +1,6 @@
-# Sistema Financeiro - Mobile App
+# NovixCred - Mobile App
 
-App mobile para clientes do sistema financeiro.
+App mobile para clientes da NovixCred.
 
 ## 🚀 Instalação
 

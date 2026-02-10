@@ -73,7 +73,7 @@ export default function CadastrosPage() {
 
     const phone = user.telefone.replace(/\D/g, '');
     let message = `Olá ${user.nome}! 👋\n\n`;
-    message += `Este é o Sistema Financeiro entrando em contato.\n`;
+    message += `Aqui é a NovixCred entrando em contato.\n`;
     message += `\nComo podemos ajudá-lo hoje?`;
 
     const encodedMessage = encodeURIComponent(message);
