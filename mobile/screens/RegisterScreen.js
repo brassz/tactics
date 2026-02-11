@@ -27,6 +27,7 @@ export default function RegisterScreen({ navigation }) {
   const [contatoEmergenciaNome, setContatoEmergenciaNome] = useState('');
   const [contatoEmergenciaTelefone, setContatoEmergenciaTelefone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState(null);
 
   const cidades = [
     { id: 'franca', name: 'FRANCA' },
@@ -68,34 +69,62 @@ export default function RegisterScreen({ navigation }) {
   };
 
   const handleRegister = async () => {
+    // Limpar mensagem anterior
+    setMessage(null);
+
     // Validar campos obrigatórios
     if (!cpf || !nome || !celular || !email || !cidade || !endereco) {
-      Alert.alert('Erro', 'Por favor, preencha todos os campos obrigatórios');
+      const msg = 'Por favor, preencha todos os campos obrigatórios';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+      } else {
+        Alert.alert('Erro', msg);
+      }
       return;
     }
 
     // Validar CPF
     if (cpf.length !== 11) {
-      Alert.alert('Erro', 'CPF deve conter 11 dígitos');
+      const msg = 'CPF deve conter 11 dígitos';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+      } else {
+        Alert.alert('Erro', msg);
+      }
       return;
     }
 
     // Validar Celular
     if (celular.length !== 11) {
-      Alert.alert('Erro', 'Celular deve conter DDD + 9 dígitos (ex: 11999999999)');
+      const msg = 'Celular deve conter DDD + 9 dígitos (ex: 11999999999)';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+      } else {
+        Alert.alert('Erro', msg);
+      }
       return;
     }
 
     // Validar Email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Erro', 'Por favor, insira um email válido');
+      const msg = 'Por favor, insira um email válido';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+      } else {
+        Alert.alert('Erro', msg);
+      }
       return;
     }
 
     // Validar data de nascimento se preenchida
     if (dataNascimento && dataNascimento.length > 0 && dataNascimento.length !== 10) {
-      Alert.alert('Erro', 'Data de nascimento deve estar no formato DD/MM/AAAA');
+      const msg = 'Data de nascimento deve estar no formato DD/MM/AAAA';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+      } else {
+        Alert.alert('Erro', msg);
+      }
       return;
     }
 
@@ -194,8 +223,14 @@ export default function RegisterScreen({ navigation }) {
         );
       }
     } catch (error) {
-      console.error('Error registering:', error);
-      Alert.alert('Erro', 'Erro ao realizar cadastro. Tente novamente.');
+      console.error('Error registering (web/mobile):', error);
+      const msg = 'Erro ao realizar cadastro. Tente novamente.';
+      if (Platform.OS === 'web') {
+        // Mostrar mensagem visível no PWA
+        setMessage(msg);
+      } else {
+        Alert.alert('Erro', msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -348,6 +383,10 @@ export default function RegisterScreen({ navigation }) {
           </View>
 
           <Text style={styles.requiredNote}>* Campos obrigatórios</Text>
+
+          {message && (
+            <Text style={styles.messageText}>{message}</Text>
+          )}
 
           <TouchableOpacity
             style={[styles.button, loading && styles.buttonDisabled]}
