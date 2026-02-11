@@ -69,8 +69,8 @@ export default function RegisterScreen({ navigation }) {
   };
 
   const handleRegister = async () => {
-    // Limpar mensagem anterior
-    setMessage(null);
+    // Indicar visualmente que o clique foi recebido (especialmente no PWA)
+    setMessage('Enviando cadastro...');
 
     // Validar campos obrigatórios
     if (!cpf || !nome || !celular || !email || !cidade || !endereco) {
@@ -203,13 +203,11 @@ export default function RegisterScreen({ navigation }) {
 
       // Redirecionar para envio de documentos
       if (Platform.OS === 'web') {
-        // Em web/PWA o Alert não suporta múltiplos botões com callbacks,
-        // então mostramos a mensagem e navegamos em seguida.
-        Alert.alert(
-          'Cadastro realizado!',
-          'Agora envie seus documentos para análise.'
-        );
-        navigation.navigate('DocumentUpload', { user: data });
+        // Em web/PWA evitamos depender do Alert para navegação
+        setMessage('Cadastro realizado! Redirecionando para envio de documentos...');
+        setTimeout(() => {
+          navigation.navigate('DocumentUpload', { user: data });
+        }, 150);
       } else {
         Alert.alert(
           'Cadastro realizado!',
@@ -224,7 +222,7 @@ export default function RegisterScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Error registering (web/mobile):', error);
-      const msg = 'Erro ao realizar cadastro. Tente novamente.';
+      const msg = `Erro ao realizar cadastro. Tente novamente. ${error?.message ? '(' + error.message + ')' : ''}`;
       if (Platform.OS === 'web') {
         // Mostrar mensagem visível no PWA
         setMessage(msg);
@@ -482,6 +480,12 @@ const styles = StyleSheet.create({
     color: '#CBD5E1',
     fontStyle: 'italic',
     marginTop: -8,
+  },
+  messageText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#F97316',
+    fontWeight: '500',
   },
   cidadesContainer: {
     flexDirection: 'column',
