@@ -1,7 +1,7 @@
 {
   "version": 2,
   "installCommand": "cd mobile && npm install",
-  "buildCommand": "cd mobile && npx expo export:web",
+  "buildCommand": "cd mobile && npx expo export -p web",
   "outputDirectory": "mobile/dist"
 }
 
