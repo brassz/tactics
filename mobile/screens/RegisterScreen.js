@@ -163,22 +163,49 @@ export default function RegisterScreen({ navigation }) {
     try {
       // Obter instância do Supabase atual
       const supabase = getSupabase();
+      
+      if (!supabase) {
+        throw new Error('Não foi possível conectar ao servidor. Verifique sua conexão.');
+      }
 
       if (Platform.OS === 'web') {
         setMessage('Verificando se CPF já está cadastrado...');
       }
       
-      // Verificar se CPF já existe
-      const { data: existingUser } = await supabase
+      // Verificar se CPF já existe (usando maybeSingle para não dar erro se não encontrar)
+      const { data: existingUser, error: checkError } = await supabase
         .from('users')
         .select('*')
         .eq('cpf', cpf)
-        .single();
+        .maybeSingle();
 
-      if (existingUser) {
-        Alert.alert('Erro', 'CPF já cadastrado');
+      // Se houver erro na query (não é erro de "não encontrado")
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking CPF:', checkError);
+        const msg = `Erro ao verificar CPF. Tente novamente.`;
+        if (Platform.OS === 'web') {
+          setMessage(msg);
+        } else {
+          Alert.alert('Erro', msg);
+        }
         setLoading(false);
         return;
+      }
+
+      // Se CPF já existe
+      if (existingUser) {
+        const msg = 'CPF já cadastrado';
+        if (Platform.OS === 'web') {
+          setMessage(msg);
+        } else {
+          Alert.alert('Erro', msg);
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (Platform.OS === 'web') {
+        setMessage('CPF disponível. Criando usuário...');
       }
 
       // Converter data de nascimento para formato SQL
@@ -214,7 +241,18 @@ export default function RegisterScreen({ navigation }) {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating user:', error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('Usuário não foi criado. Tente novamente.');
+      }
+
+      if (Platform.OS === 'web') {
+        setMessage('Usuário criado com sucesso! Preparando redirecionamento...');
+      }
 
       // Criar contato de emergência se preenchido
       if (contatoEmergenciaNome && contatoEmergenciaTelefone) {
