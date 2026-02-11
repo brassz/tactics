@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ export default function RegisterScreen({ navigation }) {
   const [contatoEmergenciaTelefone, setContatoEmergenciaTelefone] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(null);
+  const [registeredUser, setRegisteredUser] = useState(null);
 
   const cidades = [
     { id: 'franca', name: 'FRANCA' },
@@ -67,6 +68,25 @@ export default function RegisterScreen({ navigation }) {
     const cleaned = text.replace(/\D/g, '');
     return cleaned.slice(0, 11);
   };
+
+  // useEffect para navegar quando cadastro for bem-sucedido (especialmente no web/PWA)
+  useEffect(() => {
+    if (registeredUser && Platform.OS === 'web') {
+      const timer = setTimeout(() => {
+        try {
+          console.log('Navigating to DocumentUpload with user:', registeredUser);
+          if (navigation && navigation.navigate) {
+            navigation.navigate('DocumentUpload', { user: registeredUser });
+          } else if (navigation && navigation.replace) {
+            navigation.replace('DocumentUpload', { user: registeredUser });
+          }
+        } catch (err) {
+          console.error('Navigation error in useEffect:', err);
+        }
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [registeredUser, navigation]);
 
   const handleRegister = async () => {
     // Indicar visualmente que o clique foi recebido (especialmente no PWA)
@@ -220,11 +240,10 @@ export default function RegisterScreen({ navigation }) {
 
       // Redirecionar para envio de documentos
       if (Platform.OS === 'web') {
-        // Em web/PWA evitamos depender do Alert para navegação
+        // Em web/PWA usamos useEffect para navegação mais confiável
         setMessage('Cadastro realizado! Redirecionando para envio de documentos...');
-        setTimeout(() => {
-          navigation.navigate('DocumentUpload', { user: data });
-        }, 150);
+        setLoading(false);
+        setRegisteredUser(data); // Isso vai triggerar o useEffect para navegar
       } else {
         Alert.alert(
           'Cadastro realizado!',
