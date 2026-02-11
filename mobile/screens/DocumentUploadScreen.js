@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -150,22 +151,35 @@ export default function DocumentUploadScreen({ route, navigation }) {
 
       if (error) throw error;
 
-      Alert.alert(
-        'Sucesso!',
-        'Documentos enviados com sucesso. Aguarde a análise.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Recarregar app
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'Welcome' }],
-              });
+      if (Platform.OS === 'web') {
+        // Em web/PWA o Alert não executa callbacks de botões personalizados,
+        // então mostramos a mensagem e resetamos a navegação em seguida.
+        Alert.alert(
+          'Sucesso!',
+          'Documentos enviados com sucesso. Aguarde a análise.'
+        );
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Welcome' }],
+        });
+      } else {
+        Alert.alert(
+          'Sucesso!',
+          'Documentos enviados com sucesso. Aguarde a análise.',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Recarregar app
+                navigation.reset({
+                  index: 0,
+                  routes: [{ name: 'Welcome' }],
+                });
+              },
             },
-          },
-        ]
-      );
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error uploading documents:', error);
       Alert.alert('Erro', 'Erro ao enviar documentos. Tente novamente.');

@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ArrowLeft } from 'lucide-react-native';
@@ -172,16 +173,26 @@ export default function RegisterScreen({ navigation }) {
       }
 
       // Redirecionar para envio de documentos
-      Alert.alert(
-        'Cadastro realizado!',
-        'Agora envie seus documentos para análise.',
-        [
-          {
-            text: 'Continuar',
-            onPress: () => navigation.navigate('DocumentUpload', { user: data }),
-          },
-        ]
-      );
+      if (Platform.OS === 'web') {
+        // Em web/PWA o Alert não suporta múltiplos botões com callbacks,
+        // então mostramos a mensagem e navegamos em seguida.
+        Alert.alert(
+          'Cadastro realizado!',
+          'Agora envie seus documentos para análise.'
+        );
+        navigation.navigate('DocumentUpload', { user: data });
+      } else {
+        Alert.alert(
+          'Cadastro realizado!',
+          'Agora envie seus documentos para análise.',
+          [
+            {
+              text: 'Continuar',
+              onPress: () => navigation.navigate('DocumentUpload', { user: data }),
+            },
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error registering:', error);
       Alert.alert('Erro', 'Erro ao realizar cadastro. Tente novamente.');
