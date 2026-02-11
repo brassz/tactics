@@ -57,7 +57,7 @@ export default function WelcomeScreen({ navigation }) {
               resizeMode="contain"
             />
           </View>
-          <Text style={styles.heroTitle}>Sistema de Empréstimos</Text>
+          <Text style={styles.heroTitle}>NovixCred</Text>
           <Text style={styles.heroSubtitle}>
             Soluções financeiras rápidas, seguras e acessíveis para você
           </Text>
@@ -210,9 +210,9 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     backgroundColor: '#1E3A8A',
     justifyContent: 'center',
     alignItems: 'center',
@@ -224,8 +224,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   logo: {
-    width: 70,
-    height: 70,
+    width: 150,
+    height: 150,
   },
   heroTitle: {
     fontSize: 28,

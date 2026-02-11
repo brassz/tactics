@@ -33,7 +33,17 @@ module.exports = {
       versionCode: 1
     },
     web: {
-      favicon: "./assets/images/logo.png"
+      favicon: "./assets/images/logo.png",
+      name: "NovixCred",
+      shortName: "NovixCred",
+      lang: "pt-BR",
+      scope: "/",
+      startUrl: "/",
+      display: "standalone",
+      orientation: "portrait",
+      themeColor: "#3B82F6",
+      backgroundColor: "#0F172A",
+      bundler: "metro"
     },
     plugins: [
       [
