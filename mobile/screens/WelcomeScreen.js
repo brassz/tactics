@@ -224,8 +224,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   logo: {
-    width: 150,
-    height: 150,
+    width: 170,
+    height: 170,
   },
   heroTitle: {
     fontSize: 28,
