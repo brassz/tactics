@@ -1,11 +1,7 @@
 {
-  // Usa o app Expo dentro da pasta "mobile" como fonte do deploy
+  "version": 2,
   "installCommand": "cd mobile && npm install",
-
-  // Gera o build web estático do Expo
   "buildCommand": "cd mobile && npx expo export:web",
-
-  // Diretório que a Vercel deve publicar (saída do expo export:web)
   "outputDirectory": "mobile/dist"
 }
 
