@@ -72,6 +72,11 @@ export default function RegisterScreen({ navigation }) {
     // Indicar visualmente que o clique foi recebido (especialmente no PWA)
     setMessage('Enviando cadastro...');
 
+    // WEB: indicar que começou a validar
+    if (Platform.OS === 'web') {
+      setMessage('Validando dados...');
+    }
+
     // Validar campos obrigatórios
     if (!cpf || !nome || !celular || !email || !cidade || !endereco) {
       const msg = 'Por favor, preencha todos os campos obrigatórios';
@@ -128,11 +133,20 @@ export default function RegisterScreen({ navigation }) {
       return;
     }
 
+    // WEB: passou das validações
+    if (Platform.OS === 'web') {
+      setMessage('Enviando cadastro para o servidor...');
+    }
+
     setLoading(true);
 
     try {
       // Obter instância do Supabase atual
       const supabase = getSupabase();
+
+      if (Platform.OS === 'web') {
+        setMessage('Verificando se CPF já está cadastrado...');
+      }
       
       // Verificar se CPF já existe
       const { data: existingUser } = await supabase
@@ -159,6 +173,9 @@ export default function RegisterScreen({ navigation }) {
       const companyId = cidadeSelecionada ? cidadeSelecionada.id : 'franca';
       
       // Criar usuário
+      if (Platform.OS === 'web') {
+        setMessage('Criando usuário no servidor...');
+      }
       const { data, error } = await supabase
         .from('users')
         .insert([
