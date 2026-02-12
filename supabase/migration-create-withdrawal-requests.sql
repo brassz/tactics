@@ -26,7 +26,11 @@ ALTER TABLE withdrawal_requests ENABLE ROW LEVEL SECURITY;
 
 -- Create policy for withdrawal_requests
 DROP POLICY IF EXISTS "Enable all access for withdrawal_requests" ON withdrawal_requests;
-CREATE POLICY "Enable all access for withdrawal_requests" ON withdrawal_requests FOR ALL USING (true);
+CREATE POLICY "Enable all access for withdrawal_requests" 
+ON withdrawal_requests 
+FOR ALL 
+USING (true) 
+WITH CHECK (true);
 
 -- Create trigger for updated_at
 DROP TRIGGER IF EXISTS update_withdrawal_requests_updated_at ON withdrawal_requests;

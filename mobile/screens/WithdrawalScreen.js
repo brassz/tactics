@@ -132,20 +132,55 @@ export default function WithdrawalScreen({ navigation }) {
     }
 
     try {
-      const { error } = await supabase
-        .from('withdrawal_requests')
-        .insert([
-          {
-            id_solicitacao: selectedSolicitacao.id,
-            id_user: user.id,
-            nome_completo: nomeCompleto.trim(),
-            cpf: cpf,
-            chave_pix: chavePix.trim(),
-            status: 'pendente',
-          },
-        ]);
+      // Verificar se o Supabase está conectado
+      if (!supabase) {
+        throw new Error('Não foi possível conectar ao servidor');
+      }
 
-      if (error) throw error;
+      // Preparar dados para inserção
+      const withdrawalData = {
+        id_solicitacao: selectedSolicitacao.id,
+        id_user: user.id,
+        nome_completo: nomeCompleto.trim(),
+        cpf: cpf,
+        chave_pix: chavePix.trim(),
+        status: 'pendente',
+      };
+
+      console.log('=== DADOS DO SAQUE ===');
+      console.log('ID Solicitação:', withdrawalData.id_solicitacao);
+      console.log('ID User:', withdrawalData.id_user);
+      console.log('Nome:', withdrawalData.nome_completo);
+      console.log('CPF:', withdrawalData.cpf);
+      console.log('Chave PIX:', withdrawalData.chave_pix);
+      console.log('Status:', withdrawalData.status);
+
+      // Inserir no banco de dados
+      if (Platform.OS === 'web') {
+        setMessage('Salvando dados no servidor...');
+      }
+
+      const { data, error } = await supabase
+        .from('withdrawal_requests')
+        .insert([withdrawalData])
+        .select(); // Retornar os dados inseridos para confirmar
+
+      if (error) {
+        console.error('=== ERRO AO INSERIR SAQUE ===');
+        console.error('Código:', error.code);
+        console.error('Mensagem:', error.message);
+        console.error('Detalhes:', error.details);
+        console.error('Hint:', error.hint);
+        console.error('Erro completo:', JSON.stringify(error, null, 2));
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error('Nenhum dado foi retornado após a inserção');
+      }
+
+      console.log('=== SAQUE INSERIDO COM SUCESSO ===');
+      console.log('Dados retornados:', data);
 
       // Sucesso - PIX foi preenchido e solicitação criada
       const successMsg = 'Solicitação de saque enviada com sucesso! Aguarde o processamento.';
@@ -180,10 +215,26 @@ export default function WithdrawalScreen({ navigation }) {
       }
     } catch (error) {
       console.error('Error creating withdrawal request:', error);
-      const errorMsg = 'Erro ao enviar solicitação de saque. Tente novamente.';
+      
+      // Mensagem de erro mais detalhada
+      let errorMsg = 'Erro ao enviar solicitação de saque.';
+      
+      if (error?.message) {
+        errorMsg += ` ${error.message}`;
+      }
+      
+      if (error?.code) {
+        errorMsg += ` (Código: ${error.code})`;
+      }
+      
+      // Log detalhado para debug
+      if (Platform.OS === 'web') {
+        console.error('Erro completo:', JSON.stringify(error, null, 2));
+      }
+      
       if (Platform.OS === 'web') {
         setMessage(errorMsg);
-        setTimeout(() => setMessage(null), 3000);
+        setTimeout(() => setMessage(null), 5000);
       } else {
         Alert.alert('Erro', errorMsg);
       }
