@@ -9,6 +9,8 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
+  Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -24,6 +26,9 @@ export default function RequestScreen() {
   const [solicitacoes, setSolicitacoes] = useState([]);
   const [showFacialCapture, setShowFacialCapture] = useState(false);
   const [facialImageUri, setFacialImageUri] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [confirmData, setConfirmData] = useState(null);
+  const [message, setMessage] = useState(null);
   
   // Obter instância do Supabase
   const supabase = getSupabase();
@@ -59,27 +64,42 @@ export default function RequestScreen() {
 
   const uploadFacialImage = async (imageUri) => {
     try {
-      // Ler arquivo como base64
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: 'base64',
-      });
-
       // Nome único para o arquivo
       const fileName = `facial-capture-${user.id}-${Date.now()}.jpg`;
       const filePath = `capturas-faciais/${fileName}`;
 
-      // Converter base64 para arraybuffer
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      let fileData;
+
+      // Para web, usar fetch/XMLHttpRequest; para mobile, usar FileSystem
+      if (Platform.OS === 'web') {
+        // Ler arquivo usando XMLHttpRequest (funciona no web)
+        const xhr = new XMLHttpRequest();
+        fileData = await new Promise((resolve, reject) => {
+          xhr.onload = () => resolve(xhr.response);
+          xhr.onerror = () => reject(new Error('Failed to read file'));
+          xhr.responseType = 'arraybuffer';
+          xhr.open('GET', imageUri);
+          xhr.send();
+        });
+      } else {
+        // Para mobile, usar FileSystem
+        const base64 = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: 'base64',
+        });
+
+        // Converter base64 para arraybuffer
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        fileData = new Uint8Array(byteNumbers);
       }
-      const byteArray = new Uint8Array(byteNumbers);
 
       // Upload para o Supabase Storage
       const { data, error } = await supabase.storage
         .from('user-documents')
-        .upload(filePath, byteArray, {
+        .upload(filePath, fileData, {
           contentType: 'image/jpeg',
           upsert: false,
         });
@@ -131,13 +151,25 @@ export default function RequestScreen() {
 
   const handleSubmit = async () => {
     if (!valor) {
-      Alert.alert('Erro', 'Por favor, informe o valor desejado');
+      const msg = 'Por favor, informe o valor desejado';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        Alert.alert('Erro', msg);
+      }
       return;
     }
 
     const valorFloat = parseFloat(valor);
     if (valorFloat <= 0) {
-      Alert.alert('Erro', 'Valor deve ser maior que zero');
+      const msg = 'Valor deve ser maior que zero';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        Alert.alert('Erro', msg);
+      }
       return;
     }
 
@@ -154,42 +186,63 @@ export default function RequestScreen() {
     const loanDateStr = loanDate.toLocaleDateString('pt-BR');
     const dueDateStr = dueDate.toLocaleDateString('pt-BR');
 
-    // Mostrar confirmação do empréstimo
-    Alert.alert(
-      'Confirmar Empréstimo',
-      `Valor solicitado: R$ ${valorFloat.toFixed(2)}\n\n` +
-      `Taxa de juros: ${interestRate}%\n` +
-      `Data de criação: ${loanDateStr}\n` +
-      `Data de vencimento: ${dueDateStr}\n\n` +
-      `Valor total a pagar: R$ ${totalAmount.toFixed(2)}\n\n` +
-      `Você está solicitando R$ ${valorFloat.toFixed(2)} e pagará R$ ${totalAmount.toFixed(2)} em ${dueDateStr}.`,
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Confirmar',
-          onPress: () => {
-            // Após confirmar, solicitar captura facial
-            Alert.alert(
-              'Captura Facial Obrigatória',
-              'Para sua segurança, precisamos confirmar sua identidade através de uma foto.',
-              [
-                {
-                  text: 'Cancelar',
-                  style: 'cancel',
-                },
-                {
-                  text: 'Continuar',
-                  onPress: () => setShowFacialCapture(true),
-                },
-              ]
-            );
+    // Para web/PWA, usar modal de confirmação
+    if (Platform.OS === 'web') {
+      setConfirmData({
+        valorFloat,
+        interestRate,
+        loanDateStr,
+        dueDateStr,
+        totalAmount,
+      });
+      setShowConfirmModal(true);
+    } else {
+      // Para mobile nativo, usar Alert
+      Alert.alert(
+        'Confirmar Empréstimo',
+        `Valor solicitado: R$ ${valorFloat.toFixed(2)}\n\n` +
+        `Taxa de juros: ${interestRate}%\n` +
+        `Data de criação: ${loanDateStr}\n` +
+        `Data de vencimento: ${dueDateStr}\n\n` +
+        `Valor total a pagar: R$ ${totalAmount.toFixed(2)}\n\n` +
+        `Você está solicitando R$ ${valorFloat.toFixed(2)} e pagará R$ ${totalAmount.toFixed(2)} em ${dueDateStr}.`,
+        [
+          {
+            text: 'Cancelar',
+            style: 'cancel',
           },
-        },
-      ]
-    );
+          {
+            text: 'Confirmar',
+            onPress: () => {
+              // Após confirmar, solicitar captura facial
+              Alert.alert(
+                'Captura Facial Obrigatória',
+                'Para sua segurança, precisamos confirmar sua identidade através de uma foto.',
+                [
+                  {
+                    text: 'Cancelar',
+                    style: 'cancel',
+                  },
+                  {
+                    text: 'Continuar',
+                    onPress: () => setShowFacialCapture(true),
+                  },
+                ]
+              );
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const handleConfirmRequest = () => {
+    setShowConfirmModal(false);
+    // Para web/PWA, abrir modal de captura facial diretamente
+    if (Platform.OS === 'web') {
+      setMessage('Abrindo captura facial...');
+      setShowFacialCapture(true);
+    }
   };
 
   const submitRequest = async (imageUri) => {
@@ -279,14 +332,26 @@ export default function RequestScreen() {
         }
       }
 
-      Alert.alert('Sucesso!', 'Solicitação enviada com sucesso');
+      const successMsg = 'Solicitação enviada com sucesso!';
+      if (Platform.OS === 'web') {
+        setMessage(successMsg);
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        Alert.alert('Sucesso!', successMsg);
+      }
       setValor('');
       setJustificativa('');
       setFacialImageUri(null);
       await loadSolicitacoes(user.id);
     } catch (error) {
       console.error('Error submitting request:', error);
-      Alert.alert('Erro', 'Erro ao enviar solicitação. Tente novamente.');
+      const errorMsg = 'Erro ao enviar solicitação. Tente novamente.';
+      if (Platform.OS === 'web') {
+        setMessage(errorMsg);
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        Alert.alert('Erro', errorMsg);
+      }
       setFacialImageUri(null);
     } finally {
       setLoading(false);
@@ -332,6 +397,11 @@ export default function RequestScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {message && Platform.OS === 'web' && (
+        <View style={styles.messageContainer}>
+          <Text style={styles.messageText}>{message}</Text>
+        </View>
+      )}
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.title}>Solicitar Valor</Text>
@@ -424,10 +494,68 @@ export default function RequestScreen() {
         </View>
       </ScrollView>
 
+      {/* Confirmation Modal for Web/PWA */}
+      <Modal
+        visible={showConfirmModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowConfirmModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Confirmar Empréstimo</Text>
+            {confirmData && (
+              <>
+                <Text style={styles.modalText}>
+                  Valor solicitado: R$ {confirmData.valorFloat.toFixed(2)}
+                </Text>
+                <Text style={styles.modalText}>
+                  Taxa de juros: {confirmData.interestRate}%
+                </Text>
+                <Text style={styles.modalText}>
+                  Data de criação: {confirmData.loanDateStr}
+                </Text>
+                <Text style={styles.modalText}>
+                  Data de vencimento: {confirmData.dueDateStr}
+                </Text>
+                <Text style={styles.modalText}>
+                  Valor total a pagar: R$ {confirmData.totalAmount.toFixed(2)}
+                </Text>
+                <Text style={styles.modalSubtext}>
+                  Você está solicitando R$ {confirmData.valorFloat.toFixed(2)} e pagará R$ {confirmData.totalAmount.toFixed(2)} em {confirmData.dueDateStr}.
+                </Text>
+                <Text style={styles.modalWarning}>
+                  Para sua segurança, precisamos confirmar sua identidade através de uma foto.
+                </Text>
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonCancel]}
+                    onPress={() => setShowConfirmModal(false)}
+                  >
+                    <Text style={styles.modalButtonTextCancel}>Cancelar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.modalButton, styles.modalButtonConfirm]}
+                    onPress={handleConfirmRequest}
+                  >
+                    <Text style={styles.modalButtonText}>Continuar</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
       {/* Facial Capture Modal */}
       <FacialCaptureModal
         visible={showFacialCapture}
-        onClose={() => setShowFacialCapture(false)}
+        onClose={() => {
+          setShowFacialCapture(false);
+          if (Platform.OS === 'web') {
+            setMessage(null);
+          }
+        }}
         onCapture={handleFacialCapture}
         title="Captura Facial - Solicitação"
       />
@@ -582,5 +710,80 @@ const styles = StyleSheet.create({
   historyDate: {
     fontSize: 12,
     color: '#9CA3AF',
+  },
+  messageContainer: {
+    backgroundColor: '#3B82F6',
+    padding: 12,
+    alignItems: 'center',
+  },
+  messageText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modal: {
+    backgroundColor: '#1E293B',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#F1F5F9',
+    marginBottom: 16,
+  },
+  modalText: {
+    fontSize: 16,
+    color: '#CBD5E1',
+    marginBottom: 8,
+  },
+  modalSubtext: {
+    fontSize: 14,
+    color: '#F1F5F9',
+    marginTop: 12,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  modalWarning: {
+    fontSize: 14,
+    color: '#F59E0B',
+    marginTop: 16,
+    marginBottom: 20,
+    fontWeight: '600',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: '#334155',
+  },
+  modalButtonConfirm: {
+    backgroundColor: '#3B82F6',
+  },
+  modalButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonTextCancel: {
+    color: '#CBD5E1',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

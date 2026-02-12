@@ -12,6 +12,7 @@ import {
   Linking,
   ActivityIndicator,
   Image,
+  Platform,
 } from 'react-native';
 import { ArrowLeft, CheckCircle, XCircle, Clock, Phone, Mail, MessageCircle, Eye, FileText } from 'lucide-react-native';
 import { getSupabase, getCompanySupabase, supabaseStorage } from '../lib/supabaseMulti';
@@ -24,6 +25,8 @@ export default function AdminUsersScreen({ navigation }) {
   const [documents, setDocuments] = useState(null);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [viewingImage, setViewingImage] = useState(null);
+  const [message, setMessage] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   
   // Obter instância do Supabase
   const supabase = getSupabase();
@@ -90,9 +93,18 @@ export default function AdminUsersScreen({ navigation }) {
   };
 
   const updateUserStatus = async (userId, status) => {
+    setUpdatingStatus(true);
+    if (Platform.OS === 'web') {
+      setMessage('Processando aprovação...');
+    }
+
     try {
       // Se está aprovando, precisa copiar para o banco da empresa
       if (status === 'aprovado') {
+        if (Platform.OS === 'web') {
+          setMessage('Buscando dados do usuário...');
+        }
+        
         // Buscar dados completos do usuário
         const { data: user, error: fetchError } = await supabase
           .from('users')
@@ -101,21 +113,47 @@ export default function AdminUsersScreen({ navigation }) {
           .single();
 
         if (fetchError || !user) {
-          Alert.alert('Erro', 'Erro ao buscar dados do usuário');
+          const msg = 'Erro ao buscar dados do usuário';
+          if (Platform.OS === 'web') {
+            setMessage(msg);
+          } else {
+            Alert.alert('Erro', msg);
+          }
+          setUpdatingStatus(false);
           return;
         }
 
         if (!user.company) {
-          Alert.alert('Erro', 'Usuário não possui empresa definida');
+          const msg = 'Usuário não possui empresa definida';
+          if (Platform.OS === 'web') {
+            setMessage(msg);
+          } else {
+            Alert.alert('Erro', msg);
+          }
+          setUpdatingStatus(false);
           return;
+        }
+
+        if (Platform.OS === 'web') {
+          setMessage('Conectando com banco da empresa...');
         }
 
         // Obter instância do banco da empresa
         const companySupabase = getCompanySupabase(user.company);
         
         if (!companySupabase) {
-          Alert.alert('Erro', 'Erro ao conectar com banco da empresa');
+          const msg = 'Erro ao conectar com banco da empresa';
+          if (Platform.OS === 'web') {
+            setMessage(msg);
+          } else {
+            Alert.alert('Erro', msg);
+          }
+          setUpdatingStatus(false);
           return;
+        }
+
+        if (Platform.OS === 'web') {
+          setMessage('Salvando cliente no banco da empresa...');
         }
 
         // Copiar dados para tabela clients do banco da empresa
@@ -136,9 +174,19 @@ export default function AdminUsersScreen({ navigation }) {
 
         if (insertError) {
           console.error('Error inserting into company database:', insertError);
-          Alert.alert('Erro', 'Erro ao salvar cliente no banco da empresa');
+          const msg = 'Erro ao salvar cliente no banco da empresa';
+          if (Platform.OS === 'web') {
+            setMessage(msg);
+          } else {
+            Alert.alert('Erro', msg);
+          }
+          setUpdatingStatus(false);
           return;
         }
+      }
+
+      if (Platform.OS === 'web') {
+        setMessage('Atualizando status do usuário...');
       }
 
       // Atualizar status na tabela users do banco único
@@ -150,18 +198,34 @@ export default function AdminUsersScreen({ navigation }) {
       if (!updateError) {
         await loadUsers();
         setSelectedUser(null);
-        Alert.alert(
-          'Sucesso', 
-          status === 'aprovado' 
-            ? 'Cadastro aprovado e cliente salvo no banco da empresa!' 
-            : 'Cadastro reprovado com sucesso!'
-        );
+        const successMsg = status === 'aprovado' 
+          ? 'Cadastro aprovado e cliente salvo no banco da empresa!' 
+          : 'Cadastro reprovado com sucesso!';
+        
+        if (Platform.OS === 'web') {
+          setMessage(successMsg);
+          setTimeout(() => setMessage(null), 3000);
+        } else {
+          Alert.alert('Sucesso', successMsg);
+        }
       } else {
-        Alert.alert('Erro', 'Erro ao atualizar status');
+        const msg = 'Erro ao atualizar status';
+        if (Platform.OS === 'web') {
+          setMessage(msg);
+        } else {
+          Alert.alert('Erro', msg);
+        }
       }
     } catch (error) {
       console.error('Error updating user status:', error);
-      Alert.alert('Erro', 'Erro ao processar aprovação');
+      const msg = 'Erro ao processar aprovação';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+      } else {
+        Alert.alert('Erro', msg);
+      }
+    } finally {
+      setUpdatingStatus(false);
     }
   };
 
@@ -218,6 +282,11 @@ export default function AdminUsersScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {message && Platform.OS === 'web' && (
+        <View style={styles.messageContainer}>
+          <Text style={styles.messageText}>{message}</Text>
+        </View>
+      )}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ArrowLeft size={24} color="#1F2937" />
@@ -760,5 +829,18 @@ const styles = StyleSheet.create({
   imageViewerImage: {
     width: '90%',
     height: '80%',
+  },
+  messageContainer: {
+    backgroundColor: '#3B82F6',
+    padding: 12,
+    alignItems: 'center',
+  },
+  messageText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });
