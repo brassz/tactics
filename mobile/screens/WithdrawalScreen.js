@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ArrowLeft, Wallet, CheckCircle, Clock } from 'lucide-react-native';
@@ -19,6 +20,7 @@ export default function WithdrawalScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [solicitacoesAprovadas, setSolicitacoesAprovadas] = useState([]);
   const [selectedSolicitacao, setSelectedSolicitacao] = useState(null);
+  const [message, setMessage] = useState(null);
   
   // Form fields
   const [nomeCompleto, setNomeCompleto] = useState('');
@@ -79,21 +81,55 @@ export default function WithdrawalScreen({ navigation }) {
 
   const handleSubmit = async () => {
     if (!selectedSolicitacao) {
-      Alert.alert('Erro', 'Selecione uma solicitação aprovada');
+      const msg = 'Selecione uma solicitação aprovada';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        Alert.alert('Erro', msg);
+      }
       return;
     }
 
-    if (!nomeCompleto || !cpf || !chavePix) {
-      Alert.alert('Erro', 'Preencha todos os campos obrigatórios');
+    // Validação principal: PIX deve estar preenchido
+    if (!chavePix || chavePix.trim() === '') {
+      const msg = 'Por favor, preencha a chave PIX';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        Alert.alert('Erro', msg);
+      }
       return;
     }
 
-    if (cpf.length !== 11) {
-      Alert.alert('Erro', 'CPF deve conter 11 dígitos');
+    // Validações adicionais (opcionais, mas recomendadas)
+    if (!nomeCompleto || nomeCompleto.trim() === '') {
+      const msg = 'Por favor, preencha o nome completo';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        Alert.alert('Erro', msg);
+      }
+      return;
+    }
+
+    if (!cpf || cpf.length !== 11) {
+      const msg = 'CPF deve conter 11 dígitos';
+      if (Platform.OS === 'web') {
+        setMessage(msg);
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        Alert.alert('Erro', msg);
+      }
       return;
     }
 
     setLoading(true);
+    if (Platform.OS === 'web') {
+      setMessage('Enviando solicitação de saque...');
+    }
 
     try {
       const { error } = await supabase
@@ -102,34 +138,55 @@ export default function WithdrawalScreen({ navigation }) {
           {
             id_solicitacao: selectedSolicitacao.id,
             id_user: user.id,
-            nome_completo: nomeCompleto,
+            nome_completo: nomeCompleto.trim(),
             cpf: cpf,
-            chave_pix: chavePix,
+            chave_pix: chavePix.trim(),
             status: 'pendente',
           },
         ]);
 
       if (error) throw error;
 
-      Alert.alert(
-        'Sucesso!',
-        'Solicitação de saque enviada com sucesso. Aguarde o processamento.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              setSelectedSolicitacao(null);
-              setNomeCompleto('');
-              setCpf('');
-              setChavePix('');
-              loadData();
+      // Sucesso - PIX foi preenchido e solicitação criada
+      const successMsg = 'Solicitação de saque enviada com sucesso! Aguarde o processamento.';
+      
+      if (Platform.OS === 'web') {
+        setMessage(successMsg);
+        setTimeout(() => {
+          setMessage(null);
+          setSelectedSolicitacao(null);
+          setNomeCompleto('');
+          setCpf('');
+          setChavePix('');
+          loadData();
+        }, 3000);
+      } else {
+        Alert.alert(
+          'Sucesso!',
+          successMsg,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setSelectedSolicitacao(null);
+                setNomeCompleto('');
+                setCpf('');
+                setChavePix('');
+                loadData();
+              },
             },
-          },
-        ]
-      );
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error creating withdrawal request:', error);
-      Alert.alert('Erro', 'Erro ao enviar solicitação de saque. Tente novamente.');
+      const errorMsg = 'Erro ao enviar solicitação de saque. Tente novamente.';
+      if (Platform.OS === 'web') {
+        setMessage(errorMsg);
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        Alert.alert('Erro', errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -137,6 +194,11 @@ export default function WithdrawalScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {message && Platform.OS === 'web' && (
+        <View style={styles.messageContainer}>
+          <Text style={styles.messageText}>{message}</Text>
+        </View>
+      )}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ArrowLeft size={24} color="#F1F5F9" />
@@ -390,6 +452,16 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  messageContainer: {
+    backgroundColor: '#3B82F6',
+    padding: 12,
+    alignItems: 'center',
+  },
+  messageText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
 });
